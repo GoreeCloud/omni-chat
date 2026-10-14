@@ -1,6 +1,8 @@
-import { useState, memo, useRef, useCallback, useId, useMemo } from 'react';
+import { useState, memo, useRef, useCallback, useEffect, useId, useMemo } from 'react';
+import { useAtomValue } from 'jotai';
 import * as Ariakit from '@ariakit/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Constants } from 'librechat-data-provider';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Ellipsis, Eye, SquarePen, Trash, EarthIcon, Cloud, User } from 'lucide-react';
 import {
   Label,
@@ -18,15 +20,18 @@ import {
   detectVariables,
   getPromptMutationErrorKey,
   getPromptGroupPermissions,
+  getPromptResolveErrorMessage,
+  getNewConversationDraftToken,
   rowActionClasses,
   rowActionSlotClasses,
 } from '~/utils';
+import { useLocalize, useAuthContext, useSubmitMessage, usePromptContentResolver } from '~/hooks';
 import { useRecordPromptUsage, useDeletePromptGroup } from '~/data-provider';
-import { useLocalize, useAuthContext, useSubmitMessage } from '~/hooks';
+import { useLiveAnnouncer, useChatContext } from '~/Providers';
+import { navigationGenerationAtom } from '~/store/navigation';
 import VariableDialog from '../dialogs/VariableDialog';
 import PreviewPrompt from '../dialogs/PreviewPrompt';
 import CategoryIcon from '../utils/CategoryIcon';
-import { useLiveAnnouncer } from '~/Providers';
 
 const PROMPT_PATH = '/prompts';
 
@@ -42,10 +47,13 @@ function ChatGroupItem({
   const localize = useLocalize();
   const navigate = useNavigate();
   const params = useParams();
+  const { pathname } = useLocation();
   const { user } = useAuthContext();
   const { submitPrompt } = useSubmitMessage();
   const recordUsage = useRecordPromptUsage();
+  const resolvePromptContent = usePromptContentResolver();
   const { announcePolite } = useLiveAnnouncer();
+  const { conversation, index } = useChatContext();
 
   const { showToast } = useToastContext();
   const menuId = useId();
@@ -53,7 +61,54 @@ function ChatGroupItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isPreviewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [isVariableDialogOpen, setVariableDialogOpen] = useState(false);
+  const [variablePromptText, setVariablePromptText] = useState<string | undefined>(undefined);
+  const [isResolving, setIsResolving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const mountedRef = useRef(true);
+  const requestRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const conversationId = conversation?.conversationId;
+  const navigationGeneration = useAtomValue(navigationGenerationAtom);
+  /** A saved chat is identified by its id, so same-chat updates — streaming
+   *  sync, pin or project changes, and parameter edits, all of which replace
+   *  the conversation object — do not cancel an in-flight resolve. A draft
+   *  chat keeps the id "new", so it is identified by the composer's draft
+   *  token instead: `useNewConvo` renews that token on a new-chat reset and
+   *  keeps it when the composer state is kept (for example, selecting an
+   *  agent) or a parameter is edited. A resolve that was started for one
+   *  chat must not land on another: bump the token so a pending
+   *  continuation is discarded, and clear the spinner because its `finally`
+   *  block will not run for the stale request.
+   *
+   *  `navigationGeneration` adds a second cancellation path: `navigateToConvo`
+   *  resolves an uncached conversation by fetching its record before
+   *  committing it, so `chatIdentity` only changes once the fetch settles
+   *  and the user is moved. Keying the effect on the generation as well
+   *  cancels a pending resolve the moment that navigation starts, rather
+   *  than waiting for it to land.
+   *
+   *  `pathname` is a third cancellation key. A browser Back/Forward change
+   *  (or any other route change) updates the URL directly; ChatRoute keeps
+   *  the previous conversation mounted while the next one loads, so neither
+   *  `chatIdentity` nor `navigationGeneration` changes yet. Keying on
+   *  `pathname` cancels a pending resolve immediately, before the target
+   *  conversation commits. A same-path re-navigation, such as a new-chat
+   *  reset that lands back on `/c/new`, leaves the pathname unchanged and
+   *  does not cancel. */
+  const chatIdentity =
+    conversationId === Constants.NEW_CONVO ? getNewConversationDraftToken(index) : conversationId;
+  useEffect(() => {
+    requestRef.current += 1;
+    setIsResolving(false);
+  }, [chatIdentity, navigationGeneration, pathname]);
 
   const groupIsGlobal = group.isPublic === true;
   const { isExternal, canEdit, canDelete } = getPromptGroupPermissions(group, permissionBits);
@@ -86,32 +141,75 @@ function ChatGroupItem({
     deleteGroup.mutate({ id: group._id });
   };
 
-  const onCardClick = useCallback(() => {
+  const onCardClick = useCallback(async () => {
     if (!isChatRoute) {
       navigate(`${PROMPT_PATH}/${group._id}`, { replace: true });
       return;
     }
 
-    const text = group.productionPrompt?.prompt;
-    if (!text?.trim()) {
+    if (isResolving) {
       return;
     }
 
-    if (detectVariables(text)) {
-      setVariableDialogOpen(true);
-      return;
+    const token = ++requestRef.current;
+    if (isExternal) {
+      setIsResolving(true);
     }
+    try {
+      const text = await resolvePromptContent(group);
+      /** The row may have unmounted, or the active conversation may have
+       *  changed, while the Langfuse resolve was in flight; a stale
+       *  continuation must not submit, stage, or record for a chat the
+       *  user left. */
+      if (!mountedRef.current || token !== requestRef.current) {
+        return;
+      }
+      if (!text?.trim()) {
+        return;
+      }
 
-    submitPrompt(text);
-    if (group._id) {
-      recordUsage.mutate(group._id);
+      if (detectVariables(text)) {
+        setVariablePromptText(text);
+        setVariableDialogOpen(true);
+        return;
+      }
+
+      submitPrompt(text);
+      if (group._id) {
+        recordUsage.mutate(group._id);
+      }
+    } catch (error) {
+      if (mountedRef.current && token === requestRef.current) {
+        showToast({ status: 'error', message: getPromptResolveErrorMessage(error, localize) });
+      }
+    } finally {
+      if (isExternal && mountedRef.current && token === requestRef.current) {
+        setIsResolving(false);
+      }
     }
-  }, [group, submitPrompt, recordUsage, isChatRoute, navigate]);
+  }, [
+    group,
+    submitPrompt,
+    recordUsage,
+    isChatRoute,
+    navigate,
+    isResolving,
+    isExternal,
+    resolvePromptContent,
+    showToast,
+    localize,
+  ]);
 
-  const snippet =
-    typeof group.oneliner === 'string' && group.oneliner.length > 0
-      ? group.oneliner
-      : (group.productionPrompt?.prompt ?? '');
+  const productionText = group.productionPrompt?.prompt ?? '';
+  const hasOneliner = typeof group.oneliner === 'string' && group.oneliner.length > 0;
+  let snippet = '';
+  if (hasOneliner) {
+    snippet = group.oneliner as string;
+  } else if (productionText.length > 0) {
+    snippet = productionText;
+  } else if (isExternal) {
+    snippet = localize('com_ui_prompt_source_langfuse');
+  }
 
   const ariaLabel = group.category
     ? localize('com_ui_prompt_group_button', { name: group.name, category: group.category })
@@ -151,6 +249,7 @@ function ChatGroupItem({
             ? 'bg-surface-nav-selected'
             : 'hover:bg-surface-nav-hover',
         )}
+        aria-busy={isResolving}
       >
         {/* Clickable overlay for card */}
         <button
@@ -158,13 +257,18 @@ function ChatGroupItem({
           className="focus-visible:ring-ring-primary absolute inset-0 z-0 rounded-xl focus:outline-hidden focus-visible:ring-2"
           onClick={onCardClick}
           aria-label={ariaLabel}
+          disabled={isResolving}
         />
         <div className="flex items-start gap-2.5 px-3 py-2.5">
-          <CategoryIcon
-            category={group.category ?? ''}
-            className="mt-0.5 size-4 shrink-0"
-            aria-hidden="true"
-          />
+          {isResolving ? (
+            <Spinner className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          ) : (
+            <CategoryIcon
+              category={group.category ?? ''}
+              className="mt-0.5 size-4 shrink-0"
+              aria-hidden="true"
+            />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <TooltipAnchor
@@ -272,6 +376,7 @@ function ChatGroupItem({
           open={isVariableDialogOpen}
           onClose={() => setVariableDialogOpen(false)}
           group={group}
+          promptText={variablePromptText}
         />
       )}
       <OGDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

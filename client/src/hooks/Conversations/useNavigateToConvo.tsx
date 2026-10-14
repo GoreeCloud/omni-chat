@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { getDefaultStore } from 'jotai';
 import { useSetRecoilState } from 'recoil';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, isCancelledError } from '@tanstack/react-query';
@@ -25,6 +26,7 @@ import {
   updateConvoInAllQueries,
   logger,
 } from '~/utils';
+import { navigationGenerationAtom } from '~/store/navigation';
 import { useApplyModelSpecEffects } from '~/hooks/Agents';
 import { startupConfigKey } from '~/data-provider';
 import store from '~/store';
@@ -68,6 +70,12 @@ const currentRoute = () => window.location.pathname + window.location.search;
  * Module-scoped for the same reason the route is read from the browser: every
  * sidebar row mounts its own `useNavigateToConvo`, so a ref would be private
  * to the row that was clicked and blind to the click that superseded it.
+ *
+ * Also published to `navigationGenerationAtom` (`~/store/navigation`)
+ * wherever it is incremented, so a component outside this hook — a prompt
+ * card or the slash command, cancelling its own pending Langfuse resolve —
+ * can treat a navigation that has only just started as supersession too,
+ * before the target conversation commits and its own identity changes.
  */
 let navigationGeneration = 0;
 
@@ -88,6 +96,7 @@ let navigationGeneration = 0;
  */
 export const supersedeNavigation = () => {
   navigationGeneration++;
+  getDefaultStore().set(navigationGenerationAtom, navigationGeneration);
 };
 
 const useNavigateToConvo = (index = 0) => {
@@ -249,6 +258,7 @@ const useNavigateToConvo = (index = 0) => {
     /** Claim this click's place in the order before any await, so a request
      * still in flight for an earlier one cannot land on top of it. */
     const generation = ++navigationGeneration;
+    getDefaultStore().set(navigationGenerationAtom, generation);
     setSubmission(null);
 
     let convo = { ...conversation };
