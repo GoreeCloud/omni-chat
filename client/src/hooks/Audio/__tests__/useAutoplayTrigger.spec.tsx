@@ -1,11 +1,13 @@
 import React from 'react';
 import { RecoilRoot } from 'recoil';
+import { getDefaultStore } from 'jotai';
 import { renderHook } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Constants, QueryKeys, ContentTypes } from 'librechat-data-provider';
 import type { TMessage, TConversation } from 'librechat-data-provider';
 import useAutoplayTrigger from '../useAutoplayTrigger';
+import { activeRunFamily } from '~/hooks/SSE/atoms';
 import store from '~/store';
 
 const conversationId = 'convo-1';
@@ -28,7 +30,7 @@ const renderTrigger = (message: TMessage) => {
         <RecoilRoot
           initializeState={({ set }) => {
             set(store.conversationByIndex(0), { conversationId } as TConversation);
-            set(store.activeRunFamily(0), 'run-1');
+            getDefaultStore().set(activeRunFamily(0), 'run-1');
             set(store.audioRunFamily(0), null);
             set(store.isSubmittingFamily(0), false);
           }}

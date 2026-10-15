@@ -1,7 +1,9 @@
+import { useAtomValue } from 'jotai';
 import { useRecoilValue } from 'recoil';
 import { getSpeechText } from 'librechat-data-provider';
 import type { TMessage } from 'librechat-data-provider';
 import { useLatestMessage } from '~/hooks/Messages/useLatestMessage';
+import { activeRunFamily } from '~/hooks/SSE/atoms';
 import store from '~/store';
 
 export type TAutoplayTrigger = {
@@ -17,7 +19,7 @@ export type TAutoplayTrigger = {
  * speakable text (reasoning alone is not), and its run must not have been played already.
  */
 export default function useAutoplayTrigger(index: string | number = 0): TAutoplayTrigger {
-  const activeRunId = useRecoilValue(store.activeRunFamily(index));
+  const activeRunId = useAtomValue(activeRunFamily(index));
   const audioRunId = useRecoilValue(store.audioRunFamily(index));
   const isSubmitting = useRecoilValue(store.isSubmittingFamily(index));
   const latestMessage = useLatestMessage(index);

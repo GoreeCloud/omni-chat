@@ -19,6 +19,7 @@ import { useEffect } from 'react';
 import { Tools } from 'librechat-data-provider';
 import { renderHook } from '@testing-library/react';
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from 'recoil';
+import { Provider as JotaiProvider, useSetAtom, useAtomValue } from 'jotai';
 import type {
   TAttachment,
   TFile,
@@ -37,8 +38,13 @@ jest.mock('~/data-provider', () => ({
 }));
 
 import useAttachmentPreviewSync from '../useAttachmentPreviewSync';
+import { messageAttachmentsMapAtom } from '~/hooks/SSE/atoms';
 
-const wrapper = ({ children }: { children: ReactNode }) => <RecoilRoot>{children}</RecoilRoot>;
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <RecoilRoot>
+    <JotaiProvider>{children}</JotaiProvider>
+  </RecoilRoot>
+);
 
 const messageId = 'msg-1';
 const fileId = 'fid-1';
@@ -102,7 +108,7 @@ function setup({
      * for tests that simulate `isAnySubmitting` toggling — the
      * selector reads `conversationKeysAtom` × `isSubmittingFamily(key)`
      * so we have to populate both for the selector to fire. */
-    const setMap = useSetRecoilState(store.messageAttachmentsMap);
+    const setMap = useSetAtom(messageAttachmentsMapAtom);
     const setKeys = useSetRecoilState(store.conversationKeysAtom);
     const setSubmitting = useSetRecoilState(store.isSubmittingFamily(0));
     useEffect(() => {
@@ -112,7 +118,7 @@ function setup({
       setKeys([0]);
       setSubmitting(isSubmitting);
     }, [setMap, setKeys, setSubmitting]);
-    const map = useRecoilValue(store.messageAttachmentsMap);
+    const map = useAtomValue(messageAttachmentsMapAtom);
     ref.current = map;
     return null;
   };
@@ -197,12 +203,14 @@ function setupWithTransitions(
             snap.set(store.isSubmittingFamily(0), isSubmittingAtMount);
           }}
         >
-          <FlagProbe id={fileId} />
-          <MessageContext.Provider
-            value={{ messageId, isExpanded: true, isSubmitting: messageIsSubmittingAtMount }}
-          >
-            {children}
-          </MessageContext.Provider>
+          <JotaiProvider>
+            <FlagProbe id={fileId} />
+            <MessageContext.Provider
+              value={{ messageId, isExpanded: true, isSubmitting: messageIsSubmittingAtMount }}
+            >
+              {children}
+            </MessageContext.Provider>
+          </JotaiProvider>
         </RecoilRoot>
       ),
     },
@@ -471,10 +479,14 @@ describe('useAttachmentPreviewSync', () => {
           initialProps: { attachment: makeAttachment({ messageId: owner }) },
           wrapper: ({ children }: { children: ReactNode }) => (
             <RecoilRoot>
-              <FlagProbe />
-              <MessageContext.Provider value={{ messageId: owner, isExpanded: true, isSubmitting }}>
-                {children}
-              </MessageContext.Provider>
+              <JotaiProvider>
+                <FlagProbe />
+                <MessageContext.Provider
+                  value={{ messageId: owner, isExpanded: true, isSubmitting }}
+                >
+                  {children}
+                </MessageContext.Provider>
+              </JotaiProvider>
             </RecoilRoot>
           ),
         },
@@ -511,10 +523,14 @@ describe('useAttachmentPreviewSync', () => {
           initialProps: { attachment: makeAttachment({ messageId: owner }) },
           wrapper: ({ children }: { children: ReactNode }) => (
             <RecoilRoot>
-              <FlagProbe />
-              <MessageContext.Provider value={{ messageId: owner, isExpanded: true, isSubmitting }}>
-                {children}
-              </MessageContext.Provider>
+              <JotaiProvider>
+                <FlagProbe />
+                <MessageContext.Provider
+                  value={{ messageId: owner, isExpanded: true, isSubmitting }}
+                >
+                  {children}
+                </MessageContext.Provider>
+              </JotaiProvider>
             </RecoilRoot>
           ),
         },

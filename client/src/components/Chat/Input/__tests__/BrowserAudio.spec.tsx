@@ -1,10 +1,12 @@
 import React from 'react';
 import { RecoilRoot } from 'recoil';
+import { getDefaultStore } from 'jotai';
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Constants, QueryKeys, ContentTypes } from 'librechat-data-provider';
 import type { TMessage, TConversation } from 'librechat-data-provider';
+import { activeRunFamily } from '~/hooks/SSE/atoms';
 import BrowserAudio from '../BrowserAudio';
 import store from '~/store';
 
@@ -66,7 +68,7 @@ const renderBrowserAudio = ({
           initializeState={({ set }) => {
             set(store.voice, voiceName);
             set(store.conversationByIndex(0), { conversationId } as TConversation);
-            set(store.activeRunFamily(0), activeRunId);
+            getDefaultStore().set(activeRunFamily(0), activeRunId);
             set(store.audioRunFamily(0), audioRunId);
             set(store.isSubmittingFamily(0), isSubmitting);
           }}

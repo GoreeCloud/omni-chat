@@ -2,12 +2,14 @@ import React from 'react';
 import { TextEncoder } from 'util';
 import { webcrypto } from 'crypto';
 import { RecoilRoot } from 'recoil';
+import { getDefaultStore } from 'jotai';
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Constants, QueryKeys } from 'librechat-data-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { TMessage, TConversation } from 'librechat-data-provider';
 import { getTTSCacheKey, setCachedTTSAudio, getTTSCacheGeneration } from '~/utils';
+import { activeRunFamily } from '~/hooks/SSE/atoms';
 import StreamAudio from '../StreamAudio';
 import store from '~/store';
 
@@ -49,7 +51,7 @@ describe('StreamAudio cache', () => {
             initializeState={({ set }) => {
               set(store.automaticPlayback, true);
               set(store.conversationByIndex(0), { conversationId } as TConversation);
-              set(store.activeRunFamily(0), 'run-1');
+              getDefaultStore().set(activeRunFamily(0), 'run-1');
               set(store.audioRunFamily(0), null);
               set(store.isSubmittingFamily(0), false);
             }}

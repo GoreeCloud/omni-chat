@@ -266,11 +266,6 @@ const globalAudioPlayingFamily = atomFamily<boolean, string | number | null>({
   default: false,
 });
 
-const activeRunFamily = atomFamily<string | null, string | number | null>({
-  key: 'activeRunByIndex',
-  default: null,
-});
-
 const audioRunFamily = atomFamily<string | null, string | number | null>({
   key: 'audioRunByIndex',
   default: null,
@@ -399,7 +394,6 @@ export default {
   useSetConversationAtom,
   showMentionPopoverFamily,
   globalAudioURLFamily,
-  activeRunFamily,
   audioRunFamily,
   globalAudioPlayingFamily,
   globalAudioFetchingFamily,
