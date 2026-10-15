@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRecoilState, useSetRecoilState } from 'recoil';
 import { useAtom, useSetAtom, useStore, useAtomValue } from 'jotai';
-import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
 import { Constants, QueryKeys, isAssistantsEndpoint } from 'librechat-data-provider';
 import {
   activeGenerationCreatedAtByConvoId,
