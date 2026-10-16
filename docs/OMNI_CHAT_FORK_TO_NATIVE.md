@@ -70,6 +70,10 @@ The two-factor enrollment controller now encodes the TOTP issuer, account label,
 
 The optional OpenTelemetry service name now defaults to `omni-chat` when not explicitly configured, and `.env.example` documents that identity. The existing `librechat.*` telemetry attribute namespace remains untouched for compatibility. The two targeted telemetry config and SDK suites passed **34 tests** locally; deployment-specific collector integration remains a separate qualification gate.
 
+## Math rendering dependency security
+
+A local production audit identified KaTeX `0.16.47` as vulnerable to a trust-bypass advisory and found the old version explicitly retained by three root npm overrides. Those overrides now require patched KaTeX `^0.18.2`; the lockfile resolves `0.18.10` consistently for Markdown, Mermaid and math rendering. The local production audit fell from nine advisories to **three moderate, zero low, zero high and zero critical**. Frontend LaTeX, Mermaid and Markdown suites passed **49 tests**, shared API math/LaTeX suites passed **83 tests**, and the client production build completed. A new foundation contract checks the locked version and all three overrides against the advisory floor. This is a candidate upgrade across a pre-1.0 version boundary and requires exact-head GitHub CI and rendered browser validation before release acceptance. Remaining moderate advisories affecting the inherited Mammoth / argparse / sprintf-js document-conversion dependency chain are not waived by this change.
+
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.
 - [x] Upstream MIT copyright obligations acknowledged.
