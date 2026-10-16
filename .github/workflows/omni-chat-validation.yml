@@ -1,0 +1,16 @@
+name: Omni Chat foundation validation
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/omni-chat-native-foundation
+permissions:
+  contents: read
+jobs:
+  identity-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Omni Chat identity contract
+        run: node --test tests/omni-chat-identity.test.mjs

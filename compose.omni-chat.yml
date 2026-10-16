@@ -1,0 +1,13 @@
+# Development overlay for building the Omni Chat API from this repository.
+# Usage: docker compose -f docker-compose.yml -f compose.omni-chat.yml up --build
+services:
+  api:
+    container_name: omni-chat
+    image: goreecloud/omni-chat:development
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - APP_TITLE=Omni Chat
+      - HELP_AND_FAQ_URL=/
+      - MONGO_URI=mongodb://mongodb:27017/OmniChat

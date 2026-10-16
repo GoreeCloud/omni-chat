@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Omni Chat</title>
+  <defs>
+    <linearGradient id="canvas" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#173c59"/>
+      <stop offset="1" stop-color="#101d37"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#46e4c0"/>
+      <stop offset="1" stop-color="#55b8fb"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#canvas)"/>
+  <path d="M65 70h126a18 18 0 0 1 18 18v58a18 18 0 0 1-18 18h-43l-29 27v-27H65a18 18 0 0 1-18-18V88a18 18 0 0 1 18-18Z" fill="none" stroke="url(#mark)" stroke-width="13" stroke-linejoin="round"/>
+  <path d="M84 111h89M84 133h66" stroke="#e9fbff" stroke-width="11" stroke-linecap="round"/>
+</svg>

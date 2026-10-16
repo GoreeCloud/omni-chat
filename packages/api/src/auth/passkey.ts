@@ -134,7 +134,7 @@ export function getPasskeyConfig(env: NodeJS.ProcessEnv = process.env): PasskeyC
   return {
     enabled: isEnabled(env.ALLOW_PASSKEY_LOGIN),
     rpID,
-    rpName: env.PASSKEY_RP_NAME?.trim() || env.APP_TITLE?.trim() || 'LibreChat',
+    rpName: env.PASSKEY_RP_NAME?.trim() || env.APP_TITLE?.trim() || 'Omni Chat',
     origins: origins.length ? Array.from(new Set(origins)) : ['http://localhost:3080'],
   };
 }

@@ -1,0 +1,19 @@
+/* Omni Chat initial controlled skin.
+   Scoped to this product's shell. Deployment-provided themes and accessible
+   forced-color palettes remain authoritative. Full Glaze qualification is pending. */
+html[data-product='omni-chat'] {
+  --omni-ink: #132239;
+  --omni-accent: #158f89;
+  --omni-radius: 0.875rem;
+}
+@media (forced-colors: none) {
+  html[data-product='omni-chat'] a:focus-visible {
+    outline: 2px solid var(--omni-accent);
+    outline-offset: 3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-product='omni-chat'] {
+    scroll-behavior: auto;
+  }
+}

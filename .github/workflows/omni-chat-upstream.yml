@@ -1,0 +1,32 @@
+name: Omni Chat upstream status
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record upstream revision without auto-merging
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream_sha="$(git ls-remote https://github.com/LibreChat-AI/LibreChat.git refs/heads/main | cut -f1)"
+          local_sha="$(git rev-parse HEAD)"
+          test -n "$upstream_sha"
+          {
+            echo '## Omni Chat upstream status'
+            echo "- Upstream main SHA: $upstream_sha"
+            echo "- GoreeCloud checked-out SHA: $local_sha"
+            if [ "$upstream_sha" = "$local_sha" ]; then
+              echo '- State: same revision'
+            else
+              echo '- State: versions differ, review changes before import'
+            fi
+            echo '- This check never merges upstream code or deploys.'
+          } >> "$GITHUB_STEP_SUMMARY"
