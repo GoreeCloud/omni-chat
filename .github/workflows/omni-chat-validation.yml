@@ -37,5 +37,7 @@ jobs:
         run: cp .env.example .env
       - name: Generate effective Compose configuration
         run: docker compose -f docker-compose.yml -f compose.omni-chat.yml config --format json > "$RUNNER_TEMP/omni-chat-compose.json"
-      - name: Validate MongoDB and RAG credential consistency
-        run: node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json"
+      - name: Resolve explicitly enabled administration profile
+        run: docker compose -f docker-compose.yml -f compose.omni-chat.yml --profile admin config --format json > "$RUNNER_TEMP/omni-chat-admin-compose.json"
+      - name: Validate default and opt-in service configuration
+        run: node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json" "$RUNNER_TEMP/omni-chat-admin-compose.json"

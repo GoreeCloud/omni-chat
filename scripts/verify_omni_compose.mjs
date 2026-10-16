@@ -20,12 +20,17 @@ if (!configPath) {
     'API must build from GoreeCloud source',
   );
   assert.equal(apiEnv.APP_TITLE, 'Omni Chat');
-  assert.ok(
-    services['admin-panel']?.profiles?.includes('admin'),
-    'admin panel must be opt-in and absent from default Compose up',
-  );
   assert.equal(
-    services['admin-panel'].environment.SESSION_COOKIE_SECURE,
+    services['admin-panel'],
+    undefined,
+    'admin panel must not appear in default Compose services',
+  );
+  const adminConfigPath = process.argv[3];
+  assert.ok(adminConfigPath, 'opt-in admin Compose configuration is required');
+  const adminServices = JSON.parse(readFileSync(adminConfigPath, 'utf8')).services;
+  assert.ok(adminServices?.['admin-panel'], 'admin profile must activate the admin panel');
+  assert.equal(
+    adminServices['admin-panel'].environment.SESSION_COOKIE_SECURE,
     'true',
     'admin panel must require secure session cookies by default',
   );
