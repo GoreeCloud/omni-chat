@@ -43,7 +43,10 @@ test('marketplace, insights, footer, and diagnostics use Omni Chat branding', ()
   assert.match(file('client/src/components/Insights/InsightsView.tsx'), /\| Omni Chat/);
   assert.match(file('client/src/components/Chat/Footer.tsx'), /\[Omni Chat /);
   assert.match(file('client/src/components/Chat/Footer.tsx'), /github\.com\/GoreeCloud\/omni-chat/);
-  assert.match(file('client/src/components/Nav/SettingsTabs/About/About.tsx'), /Omni Chat \(LibreChat-derived\) version:/);
+  assert.match(
+    file('client/src/components/Nav/SettingsTabs/About/About.tsx'),
+    /Omni Chat \(LibreChat-derived\) version:/,
+  );
 });
 
 test('backend and API fallbacks use Omni Chat', () => {
@@ -72,11 +75,13 @@ test('development override selects local source and does not use upstream API im
   assert.match(compose, /dockerfile: Dockerfile/);
   assert.match(compose, /APP_TITLE=Omni Chat/);
   assert.doesNotMatch(compose, /registry\.librechat\.ai/);
-  assert.match(compose, /\["mongod", "--auth", "--bind_ip_all"\]/);
+  assert.match(compose, /command: .*--auth.*--bind_ip_all/);
   assert.match(compose, /OMNI_MONGO_ROOT_USERNAME/);
   assert.match(compose, /OMNI_MONGO_ROOT_PASSWORD/);
   assert.match(compose, /OMNI_POSTGRES_PASSWORD/);
   assert.match(compose, /profiles: \[admin\]/);
+  assert.match(compose, /ports: !override/);
+  assert.ok(compose.includes("'127.0.0.1:${ADMIN_PANEL_PORT:-3000}:3000'"));
   assert.match(compose, /SESSION_COOKIE_SECURE: 'true'/);
   assert.match(compose, /POSTGRES_DB=OmniChatVectors/);
   assert.match(compose, /POSTGRES_USER=omnic/);

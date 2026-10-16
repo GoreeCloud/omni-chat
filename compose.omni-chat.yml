@@ -15,10 +15,14 @@ services:
     # Opt in explicitly with --profile admin. The inherited image is still
     # third-party and must not be part of the default development stack.
     profiles: [admin]
+    # Compose >=2.24.4: replace inherited public 0.0.0.0 port, do not
+    # accidentally append a second public port with normal merge semantics.
+    ports: !override
+      - '127.0.0.1:${ADMIN_PANEL_PORT:-3000}:3000'
     environment:
       SESSION_COOKIE_SECURE: 'true'
   mongodb:
-    command: ["mongod", "--auth", "--bind_ip_all"]
+    command: ['mongod', '--auth', '--bind_ip_all']
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}

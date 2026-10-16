@@ -29,6 +29,10 @@ if (!configPath) {
   assert.ok(adminConfigPath, 'opt-in admin Compose configuration is required');
   const adminServices = JSON.parse(readFileSync(adminConfigPath, 'utf8')).services;
   assert.ok(adminServices?.['admin-panel'], 'admin profile must activate the admin panel');
+  const published = adminServices['admin-panel'].ports;
+  assert.equal(published?.length, 1, 'admin panel must not inherit an extra public port');
+  assert.equal(published[0].host_ip, '127.0.0.1', 'admin port must bind to localhost');
+  assert.equal(published[0].target, 3000);
   assert.equal(
     adminServices['admin-panel'].environment.SESSION_COOKIE_SECURE,
     'true',

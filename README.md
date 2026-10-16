@@ -24,7 +24,7 @@ To run with a development **API built from this GoreeCloud checkout**, use:
 
 This is **development-only**. Other services in the inherited Compose configuration still use third-party images, and the authentication overlay applies to fresh MongoDB volumes only. Do not expose the default stack to the public internet or treat it as production-hardened.
 
-The optional administration panel is excluded from the default developer stack. To enable it in an isolated HTTPS-capable development setup, add `--profile admin` to your Compose command. Review its external image, exposed port, and deployment configuration separately before enabling it.
+The optional administration panel is excluded from the default developer stack. To enable it in an isolated HTTPS-capable development setup, add `--profile admin` to your Compose command. With Docker Compose 2.24.4 or newer, the overlay replaces the inherited public admin port with a **localhost-only** binding; older Compose versions must not be used with this overlay. Review its external image, HTTPS proxy, session-secret configuration, and deployment security separately before enabling it.
 
 Run the Omni Chat source identity checks with:
 
