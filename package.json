@@ -241,6 +241,9 @@
     "mdast-util-gfm": {
       "mdast-util-gfm-autolink-literal": "2.0.0"
     },
+    "mammoth": {
+      "argparse": "^2.0.1"
+    },
     "katex": "^0.18.2",
     "rehype-katex": {
       "katex": "^0.18.2"

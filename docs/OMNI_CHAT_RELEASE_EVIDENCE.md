@@ -10,7 +10,9 @@ Passing this test does **not** establish production backup or restore readiness.
 
 ## Supply-chain disposition
 
-The source dependency `mammoth@1.13.0` retains `argparse@1.x` and `sprintf-js`, causing three moderate npm audit findings. No patched `sprintf-js` version is published. The real document conversion unit tests have passed, but those tests do not eliminate the advisory. Do not suppress these advisories or report an all-clear; resolve the upstream dependency, replace it with a reviewed compatible alternative, or secure formal risk acceptance before release.
+Mammoth 1.13.0 declares an old CLI-only `argparse@1.x` dependency, which pulled in vulnerable `sprintf-js` and previously produced three moderate production findings. An **isolated fresh-install compatibility test** demonstrated that npm can resolve the scoped `mammoth > argparse@^2.0.1` override without `sprintf-js`; both Mammoth library DOCX-to-HTML and CLI DOCX-to-Markdown conversion passed (the legacy CLI printed nonfatal deprecation warnings). The Omni Chat lockfile now uses root `argparse@2.0.1` with no nested parser or `sprintf-js`. `npm audit --omit=dev --audit-level=moderate` reports **zero advisories locally**, and the foundation CI gate has been tightened to block moderate-or-higher findings.
+
+**Limitations:** A full local monorepo `npm ci` was terminated with exit code 137, so the complete clean-install compatibility has not been verified locally. The exact-head GitHub Actions dependency installation, document conversion suites and broader regression checks must pass before treating this remediation as release-accepted. Do not suppress or waive advisories, and continue tracking Mammoth upstream's CLI migration.
 
 ## Release decision
 
