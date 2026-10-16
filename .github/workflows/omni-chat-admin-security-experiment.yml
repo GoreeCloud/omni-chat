@@ -1,0 +1,93 @@
+name: Omni Chat Admin Panel pinned-source remediation experiment
+
+on:
+  push:
+    branches:
+      - experiment/omni-admin-security-20261016
+
+permissions:
+  contents: read
+
+jobs:
+  admin-source-remediation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout a known upstream revision without credentials
+        uses: actions/checkout@v5
+        with:
+          repository: LibreChat-AI/admin-panel
+          ref: 82fb4b61409d5c2e6eceb3d116b89bc957c1620e
+          persist-credentials: false
+          path: admin-src
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.11
+      - name: Stage fixed npm dependency constraints and Alpine updates
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import subprocess
+          src = Path("admin-src")
+          actual = subprocess.check_output(["git","-C",str(src),"rev-parse","HEAD"],text=True).strip()
+          assert actual == "82fb4b61409d5c2e6eceb3d116b89bc957c1620e", actual
+          path = src / "package.json"
+          doc = json.loads(path.read_text())
+          assert doc["dependencies"]["@tanstack/react-start"] == "1.167.30"
+          assert doc["overrides"]["@tanstack/react-start"] == "1.167.30"
+          doc["dependencies"]["@tanstack/react-start"] = "1.169.39"
+          doc["overrides"]["@tanstack/react-start"] = "1.169.39"
+          doc["overrides"]["@tanstack/start-server-core"] = "1.169.39"
+          doc["overrides"]["seroval"] = "1.6.3"
+          doc["overrides"]["shell-quote"] = "1.8.4"
+          path.write_text(json.dumps(doc, indent=2) + "\n")
+          dockerfile = src / "Dockerfile"
+          original = dockerfile.read_text()
+          first = "FROM oven/bun:1.3.11-alpine AS base\n"
+          assert original.count(first) == 1
+          dockerfile.write_text(original.replace(first, first + "RUN apk upgrade --no-cache\n"))
+          print("Staged dependency/base updates only in ephemeral runner workspace")
+          PY
+      - name: Resolve and lock dependency upgrades
+        working-directory: admin-src
+        run: bun install
+      - name: Verify frontend builds with updated TanStack dependencies
+        working-directory: admin-src
+        run: bun run build
+      - name: Build ephemeral patched admin container
+        run: docker build --file admin-src/Dockerfile --tag goreecloud-admin-remediation:trial --progress plain admin-src
+      - name: Scan local trial image without publishing
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: goreecloud-admin-remediation:trial
+          format: json
+          output: admin-remediation-trivy.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          ignore-unfixed: false
+          exit-code: '0'
+      - name: Validate no known critical image findings remain
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("admin-remediation-trivy.json").read_text())
+          results = report.get("Results") or []
+          if not results: raise SystemExit("No Trivy scan results")
+          findings = [v for r in results for v in (r.get("Vulnerabilities") or [])]
+          critical = [(v.get("VulnerabilityID"),v.get("PkgName")) for v in findings if v.get("Severity") == "CRITICAL"]
+          print("Remaining critical image findings:", critical)
+          if critical:
+              raise SystemExit("Admin Panel remains blocked by critical vulnerabilities")
+          PY
+      - name: Save experimental vulnerability evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: omni-chat-admin-dependency-remediation-experiment
+          path: admin-remediation-trivy.json
+          if-no-files-found: warn
+          retention-days: 7
