@@ -1,0 +1,41 @@
+name: Omni Chat Android browser preview (isolated)
+
+on:
+  push:
+    branches:
+      - preview/omni-chat-android-ci-20261016
+
+permissions:
+  contents: read
+
+jobs:
+  fresh-client-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.16.0'
+          cache: npm
+      - name: Install locked workspace dependencies
+        run: npm ci
+      - name: Compile current integrated client
+        run: npm run e2e:prepare
+      - name: Verify exact candidate and new agent artwork
+        shell: bash
+        run: |
+          set -eu
+          test -s client/dist/index.html
+          test -s client/dist/assets/omni-chat-mark.svg
+          grep -q 'Omni Chat AI assistant' client/dist/assets/omni-chat-mark.svg
+          grep -q 'data-product="omni-chat"' client/dist/index.html
+          echo "Preview source commit: $GITHUB_SHA"
+      - name: Export frontend-only Android browser preview
+        uses: actions/upload-artifact@v6
+        with:
+          name: omni-chat-frontend-preview
+          path: client/dist/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 2
