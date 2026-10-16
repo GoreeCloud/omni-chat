@@ -90,21 +90,34 @@ test('Omni Chat unauthenticated client accessibility smoke', { timeout: 90000 },
       assert.equal(Number.parseFloat(rootStyle.radius), 0.875, mode.name + ' scoped radius');
       assert.ok(rootStyle.radius.endsWith('rem'), mode.name + ' radius unit');
       assert.equal(rootStyle.scrollBehavior, 'auto', mode.name + ' reduced motion');
+      const unfocusedStyle = await page.locator('#email').evaluate((input) => ({
+        shadow: getComputedStyle(input).boxShadow,
+      }));
       await page.keyboard.press('Tab');
       await page.locator('#email').focus();
-      const focusStyle = await page.locator('#email').evaluate((input) => ({
-        visible: input.matches(':focus-visible'),
-        width: getComputedStyle(input).outlineWidth,
-        style: getComputedStyle(input).outlineStyle,
-      }));
+      const focusStyle = await page.locator('#email').evaluate((input) => {
+        const style = getComputedStyle(input);
+        return {
+          visible: input.matches(':focus-visible'),
+          modality: document.documentElement.dataset.inputModality,
+          width: style.outlineWidth,
+          outlineStyle: style.outlineStyle,
+          shadow: style.boxShadow,
+        };
+      });
+      assert.equal(focusStyle.modality, 'keyboard', mode.name + ' keyboard modality');
       assert.equal(focusStyle.visible, true, mode.name + ' keyboard focus');
-      // The theme may intentionally use a stronger 3px focus outline. Test
-      // the minimum accessible indicator without replacing its design roles.
+      // Inputs use Tailwind's focus ring with the native outline hidden;
+      // other theme roles may provide a solid outline instead. Require
+      // an actual changed visual indicator rather than one implementation.
+      const hasOutline =
+        focusStyle.outlineStyle !== 'none' && Number.parseFloat(focusStyle.width) >= 2;
+      const hasRing =
+        focusStyle.shadow !== 'none' && focusStyle.shadow !== unfocusedStyle.shadow;
       assert.ok(
-        Number.parseFloat(focusStyle.width) >= 2,
-        mode.name + ' focus width must be at least 2px',
+        hasOutline || hasRing,
+        mode.name + ' needs an outline or a focus-only CSS ring: ' + JSON.stringify(focusStyle),
       );
-      assert.equal(focusStyle.style, 'solid', mode.name + ' focus style');
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
