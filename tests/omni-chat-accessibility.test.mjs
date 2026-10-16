@@ -98,7 +98,12 @@ test('Omni Chat unauthenticated client accessibility smoke', { timeout: 90000 },
         style: getComputedStyle(input).outlineStyle,
       }));
       assert.equal(focusStyle.visible, true, mode.name + ' keyboard focus');
-      assert.equal(focusStyle.width, '2px', mode.name + ' focus width');
+      // The theme may intentionally use a stronger 3px focus outline. Test
+      // the minimum accessible indicator without replacing its design roles.
+      assert.ok(
+        Number.parseFloat(focusStyle.width) >= 2,
+        mode.name + ' focus width must be at least 2px',
+      );
       assert.equal(focusStyle.style, 'solid', mode.name + ' focus style');
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
