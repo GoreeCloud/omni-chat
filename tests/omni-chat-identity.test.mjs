@@ -27,6 +27,20 @@ test('browser shell and client default use Omni Chat identity', () => {
   );
 });
 
+test('autofill keyboard focus preserves the theme-owned field ring', () => {
+  const css = file('client/src/style.css');
+  assert.match(
+    css,
+    /html:not\(\[data-input-modality='pointer'\]\) \.webkit-dark-styles\.lc-field:focus-visible/,
+    'autofill focus ring must be keyboard-only',
+  );
+  assert.match(css, /--tw-ring-offset-shadow/);
+  assert.match(css, /--tw-ring-shadow/);
+  const field = file('packages/client/src/components/Field.ts');
+  assert.match(field, /focus-visible:ring-2/);
+  assert.match(field, /focus-visible:outline-hidden/);
+});
+
 test('installable app and sign-in surface use Omni Chat identity', () => {
   const vite = file('client/vite.config.ts');
   assert.match(vite, /name: 'Omni Chat'/);
