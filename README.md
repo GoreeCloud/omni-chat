@@ -22,7 +22,7 @@ To run with a development **API built from this GoreeCloud checkout**, use:
 
     docker compose -f docker-compose.yml -f compose.omni-chat.yml up --build
 
-This is **development-only**. The source-built API publishes only on `127.0.0.1` when both Compose files are used, and the authentication overlay applies to fresh MongoDB volumes only. Other services still use third-party images. The `!override` port replacement requires Docker Compose 2.24.4 or newer. Do not expose the development stack to the public internet or treat it as production-hardened.
+This is **development-only**. The source-built API publishes only on `127.0.0.1` when both Compose files are used, and the authentication overlay applies to fresh MongoDB volumes only. Search also requires a unique `OMNI_MEILI_MASTER_KEY` shared with the API; it may not be blank even when `SEARCH=false`. Other services still use third-party images. The `!override` port replacement requires Docker Compose 2.24.4 or newer. Do not expose the development stack to the public internet or treat it as production-hardened.
 
 The optional administration panel is excluded from the default developer stack. To enable it in an isolated HTTPS-capable development setup, add `--profile admin` to your Compose command. With Docker Compose 2.24.4 or newer, the overlay replaces the inherited public admin port with a **localhost-only** binding; older Compose versions must not be used with this overlay. Review its external image, HTTPS proxy, session-secret configuration, and deployment security separately before enabling it.
 

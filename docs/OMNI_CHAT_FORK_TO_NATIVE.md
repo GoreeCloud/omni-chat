@@ -56,6 +56,10 @@ The GoreeCloud development Compose override binds the source-built API to loopba
 
 At `67bcde39e8e87839cb09c133d284bb4b6664db9f`, 10 GitHub workflow groups passed, while backend shared API shard 2/4 failed 1 process-reaper timing assertion among 4,953 tests and Playwright memory shard 6/6 failed two welcome-disclaimer assertions. The two browser tests used the obsolete `librechat.ai` selector despite the genuine Omni Chat default footer linking to `https://github.com/GoreeCloud/omni-chat`; the selector now matches the owned product identity and is guarded by the identity contract. The reaper test now prevents bash's final-process replacement optimization and uses an explicit, longer SIGTERM grace interval to test its SIGKILL escalation under contention without removing any assertions. Eight consecutive local runs of the complete three-test reaper suite passed (24 test executions). The revised browser scenarios have not been qualified in a live full backend Playwright run yet. None of these changes authorize a production release.
 
+## Development search security contract
+
+The inherited development Compose file allowed `MEILI_MASTER_KEY` to expand to an empty value. The Omni Chat overlay now requires a dedicated `OMNI_MEILI_MASTER_KEY` and uses the same secret for the source-built API and Meilisearch. An absent or empty key must make Compose configuration fail before containers launch, including when the optional search feature is disabled. Synthetic merged-configuration CI tests verify shared nonempty credentials, alongside MongoDB, PostgreSQL and optional admin-panel restrictions. This is a development-only defense-in-depth change, not a production security review.
+
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.
 - [x] Upstream MIT copyright obligations acknowledged.

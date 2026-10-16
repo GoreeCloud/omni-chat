@@ -74,6 +74,7 @@ test('backend and API fallbacks use Omni Chat', () => {
   assert.match(example, /^OMNI_MONGO_ROOT_USERNAME=$/m);
   assert.match(example, /^OMNI_MONGO_ROOT_PASSWORD=$/m);
   assert.match(example, /^OMNI_POSTGRES_PASSWORD=$/m);
+  assert.match(example, /^OMNI_MEILI_MASTER_KEY=$/m);
 });
 
 test('development override selects local source and does not use upstream API image', () => {
@@ -85,6 +86,7 @@ test('development override selects local source and does not use upstream API im
   assert.match(compose, /OMNI_MONGO_ROOT_USERNAME/);
   assert.match(compose, /OMNI_MONGO_ROOT_PASSWORD/);
   assert.match(compose, /OMNI_POSTGRES_PASSWORD/);
+  assert.match(compose, /OMNI_MEILI_MASTER_KEY/);
   assert.match(compose, /profiles: \[admin\]/);
   assert.match(compose, /ports: !override/);
   assert.match(compose, /127\.0\.0\.1:.*PORT:-3080/);

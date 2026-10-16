@@ -7,10 +7,17 @@ if (!configPath) {
   process.exitCode = 2;
 } else {
   const services = JSON.parse(readFileSync(configPath, 'utf8')).services;
-  assert.ok(services?.api && services.mongodb && services.vectordb && services.rag_api);
+  assert.ok(
+    services?.api &&
+      services.mongodb &&
+      services.meilisearch &&
+      services.vectordb &&
+      services.rag_api,
+  );
 
   const apiEnv = services.api.environment;
   const mongoEnv = services.mongodb.environment;
+  const meiliEnv = services.meilisearch.environment;
   const postgresEnv = services.vectordb.environment;
   const ragEnv = services.rag_api.environment;
 
@@ -20,6 +27,8 @@ if (!configPath) {
     'API must build from GoreeCloud source',
   );
   assert.equal(apiEnv.APP_TITLE, 'Omni Chat');
+  assert.equal(apiEnv.MEILI_MASTER_KEY, meiliEnv.MEILI_MASTER_KEY);
+  assert.ok(meiliEnv.MEILI_MASTER_KEY?.length >= 16);
   const apiPorts = services.api.ports;
   assert.equal(apiPorts?.length, 1, 'API must not inherit an extra public port');
   assert.equal(apiPorts[0].host_ip, '127.0.0.1', 'development API must bind to localhost');

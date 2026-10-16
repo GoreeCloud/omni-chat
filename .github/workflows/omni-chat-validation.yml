@@ -31,6 +31,7 @@ jobs:
       OMNI_MONGO_ROOT_USERNAME: 'omnicitest'
       OMNI_MONGO_ROOT_PASSWORD: 'synthetic_mongo_ci_2026'
       OMNI_POSTGRES_PASSWORD: 'synthetic_pg_ci_2026'
+      OMNI_MEILI_MASTER_KEY: 'synthetic_search_ci_key_2026_42'
     steps:
       - uses: actions/checkout@v4
       - name: Prepare synthetic configuration
@@ -45,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for key in OMNI_MONGO_ROOT_USERNAME OMNI_MONGO_ROOT_PASSWORD OMNI_POSTGRES_PASSWORD; do
+          for key in OMNI_MONGO_ROOT_USERNAME OMNI_MONGO_ROOT_PASSWORD OMNI_POSTGRES_PASSWORD OMNI_MEILI_MASTER_KEY; do
             if env "$key=" docker compose -f docker-compose.yml -f compose.omni-chat.yml config --quiet > "$RUNNER_TEMP/omni-missing-credential.log" 2>&1; then
               echo "::error title=Credential bypass::$key must reject an empty value"
               exit 1
