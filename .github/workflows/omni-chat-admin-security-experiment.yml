@@ -49,7 +49,7 @@ jobs:
           doc["overrides"]["@tanstack/react-start-client"] = "1.168.39"
           doc["overrides"]["@tanstack/react-start-server"] = "1.167.46"
           doc["overrides"]["seroval"] = "1.6.3"
-          doc["overrides"]["shell-quote"] = "1.8.4"
+          doc["overrides"]["shell-quote"] = "1.11.0"
           # Keep the official Start/Router peer graph coherent; the upstream
           # Admin Panel's old overrides otherwise force incompatible modules.
           versions = {
@@ -106,7 +106,12 @@ jobs:
           results = report.get("Results") or []
           if not results: raise SystemExit("No Trivy scan results")
           findings = [v for r in results for v in (r.get("Vulnerabilities") or [])]
+          packages = [p for result in results for p in (result.get("Packages") or [])]
+          versions = {p.get("Version") for p in packages if p.get("Name") == "shell-quote"}
+          if versions != {"1.11.0"}:
+              raise SystemExit(f"Unexpected shell-quote versions in image: {versions}")
           critical = [(v.get("VulnerabilityID"),v.get("PkgName")) for v in findings if v.get("Severity") == "CRITICAL"]
+          print("High severity findings still require manual triage:", sum(v.get("Severity") == "HIGH" for v in findings))
           print("Remaining critical image findings:", critical)
           if critical:
               raise SystemExit("Admin Panel remains blocked by critical vulnerabilities")
