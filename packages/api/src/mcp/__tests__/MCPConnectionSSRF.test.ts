@@ -481,6 +481,13 @@ async function createRedirectChain(depth: number, statusCode: 307 | 308): Promis
       res.end();
       return;
     }
+    if (n !== 0) {
+      // An SDK metadata discovery request is not the final redirect target.
+      // Never mistake unrelated probing for a sixth followed redirect.
+      res.writeHead(404);
+      res.end();
+      return;
+    }
     state.redirectHit = true;
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('final');

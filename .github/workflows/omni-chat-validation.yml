@@ -23,3 +23,19 @@ jobs:
           node-version: '24'
       - name: Block high and critical production advisories
         run: npm audit --omit=dev --audit-level=high --no-fund
+  composed-development-credentials:
+    runs-on: ubuntu-latest
+    env:
+      UID: '1000'
+      GID: '1000'
+      OMNI_MONGO_ROOT_USERNAME: 'omnicitest'
+      OMNI_MONGO_ROOT_PASSWORD: 'synthetic_mongo_ci_2026'
+      OMNI_POSTGRES_PASSWORD: 'synthetic_pg_ci_2026'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare synthetic configuration
+        run: cp .env.example .env
+      - name: Generate effective Compose configuration
+        run: docker compose -f docker-compose.yml -f compose.omni-chat.yml config --format json > "$RUNNER_TEMP/omni-chat-compose.json"
+      - name: Validate MongoDB and RAG credential consistency
+        run: node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json"

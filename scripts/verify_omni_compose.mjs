@@ -1,0 +1,48 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+
+const configPath = process.argv[2];
+if (!configPath) {
+  console.error('Usage: node scripts/verify_omni_compose.mjs <docker-compose-config.json>');
+  process.exitCode = 2;
+} else {
+  const services = JSON.parse(readFileSync(configPath, 'utf8')).services;
+  assert.ok(services?.api && services.mongodb && services.vectordb && services.rag_api);
+
+  const apiEnv = services.api.environment;
+  const mongoEnv = services.mongodb.environment;
+  const postgresEnv = services.vectordb.environment;
+  const ragEnv = services.rag_api.environment;
+
+  assert.equal(
+    services.api.build?.dockerfile,
+    'Dockerfile',
+    'API must build from GoreeCloud source',
+  );
+  assert.equal(apiEnv.APP_TITLE, 'Omni Chat');
+  assert.deepEqual(services.mongodb.command, ['mongod', '--auth', '--bind_ip_all']);
+  assert.equal(typeof mongoEnv.MONGO_INITDB_ROOT_USERNAME, 'string');
+  assert.ok(mongoEnv.MONGO_INITDB_ROOT_USERNAME.length > 0);
+  assert.ok(mongoEnv.MONGO_INITDB_ROOT_PASSWORD?.length > 0);
+  assert.match(
+    apiEnv.MONGO_URI,
+    /mongodb:\/\/[^:]+:[^@]+@mongodb:27017\/OmniChat\?authSource=admin/,
+  );
+  assert.equal(postgresEnv.POSTGRES_DB, 'OmniChatVectors');
+  assert.equal(ragEnv.POSTGRES_DB, postgresEnv.POSTGRES_DB);
+  assert.equal(ragEnv.POSTGRES_USER, postgresEnv.POSTGRES_USER);
+  assert.equal(ragEnv.POSTGRES_PASSWORD, postgresEnv.POSTGRES_PASSWORD);
+  assert.ok(
+    postgresEnv.POSTGRES_PASSWORD.length >= 12,
+    'synthetic test credentials must be nonempty',
+  );
+  assert.notEqual(
+    postgresEnv.POSTGRES_PASSWORD,
+    'mypassword',
+    'inherited static credential must not survive',
+  );
+
+  console.log(
+    'Omni Chat source-built development Compose contract verified (no credentials printed)',
+  );
+}

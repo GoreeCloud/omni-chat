@@ -375,8 +375,8 @@ describe('getOpenAIConfig', () => {
     expect(result.configOptions?.baseURL).toBe(reverseProxyUrl);
     expect(result.configOptions?.defaultHeaders).toMatchObject({
       'HTTP-Referer': 'https://librechat.ai',
-      'X-Title': 'LibreChat',
-      'X-OpenRouter-Title': 'LibreChat',
+      'X-Title': 'Omni Chat',
+      'X-OpenRouter-Title': 'Omni Chat',
       'X-OpenRouter-Categories': 'general-chat,personal-agent,programming-app',
     });
     expect(result.llmConfig.include_reasoning).toBe(true);
@@ -1191,8 +1191,8 @@ describe('getOpenAIConfig', () => {
 
       expect(result.configOptions?.defaultHeaders).toEqual({
         'HTTP-Referer': 'https://librechat.ai',
-        'X-Title': 'LibreChat',
-        'X-OpenRouter-Title': 'LibreChat',
+        'X-Title': 'Omni Chat',
+        'X-OpenRouter-Title': 'Omni Chat',
         'X-OpenRouter-Categories': 'general-chat,personal-agent,programming-app',
         'X-Custom-Header': 'custom-value',
         Authorization: 'Bearer custom-token',
@@ -1772,7 +1772,7 @@ describe('getOpenAIConfig', () => {
           reverseProxyUrl: baseURL,
           headers: {
             'HTTP-Referer': 'https://librechat.ai',
-            'X-Title': 'LibreChat',
+            'X-Title': 'Omni Chat',
             Authorization: `Bearer ${apiKey}`,
           },
           addParams: {
@@ -1811,7 +1811,7 @@ describe('getOpenAIConfig', () => {
         });
         expect(result.configOptions?.defaultHeaders).toMatchObject({
           'HTTP-Referer': 'https://librechat.ai',
-          'X-Title': 'LibreChat',
+          'X-Title': 'Omni Chat',
           Authorization: `Bearer ${apiKey}`,
         });
         expect(result.provider).toBe('openrouter');
@@ -1853,7 +1853,7 @@ describe('getOpenAIConfig', () => {
         });
         expect(result.configOptions?.baseURL).toBe(baseURL);
         expect(result.configOptions?.defaultHeaders).toMatchObject({
-          'X-OpenRouter-Title': 'LibreChat',
+          'X-OpenRouter-Title': 'Omni Chat',
           Authorization: `Bearer ${apiKey}`,
         });
         expect(result.provider).toBe('openrouter');

@@ -1,14 +1,12 @@
-/* Omni Chat initial controlled skin.
-   Scoped to this product's shell. Deployment-provided themes and accessible
-   forced-color palettes remain authoritative. Full Glaze qualification is pending. */
+/* Omni Chat identity bridge. Stable Glaze V1.7.0 is a bounded
+   presentation-only contract; full consumer qualification is pending.
+   Inherit the existing theme palette instead of hardcoding colors. */
 html[data-product='omni-chat'] {
-  --omni-ink: #132239;
-  --omni-accent: #158f89;
   --omni-radius: 0.875rem;
 }
 @media (forced-colors: none) {
   html[data-product='omni-chat'] a:focus-visible {
-    outline: 2px solid var(--omni-accent);
+    outline: 2px solid currentColor;
     outline-offset: 3px;
   }
 }

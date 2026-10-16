@@ -18,7 +18,7 @@ The original conversation engine, model-provider integrations, client navigation
 
 Existing deployments may have stored settings and overridden environment variables. Do not assume they will automatically migrate or be rebranded.
 
-For new development databases, the updated Compose overlay requires MongoDB credentials and enables mongod --auth. Existing data volumes require a reviewed backup and credential migration. This is not a production security qualification.
+For new development databases, the updated Compose overlay requires MongoDB credentials and enables `mongod --auth`. It also replaces the inherited PostgreSQL/pgvector sample password with a required unique `OMNI_POSTGRES_PASSWORD`, passed consistently to the RAG service through its documented `POSTGRES_PASSWORD` environment variable. Both databases require fresh volumes or a reviewed backup/credential migration. A no-containers-started Compose configuration check in CI verifies the **effective merged configuration** with synthetic credentials. This is not a production security qualification.
 
 ## Native interfaces and transition plan
 1. **Identity and presentation:** owned configuration, product naming, logo family, onboarding and locale strings.
@@ -35,6 +35,12 @@ The upstream-status workflow records whether upstream main matches this fork's c
 
 ## Production dependency advisory baseline — October 16, 2026
 A local npm production-dependency audit of the inherited initial lockfile returned 16 advisories (2 critical, 4 high, 4 moderate, 6 low). A non-force npm package-lock-only update reduced the follow-up audit to 10 (0 critical, 0 high, 4 moderate, 6 low). The lockfile update is a **development candidate**, not accepted release evidence. It changes thousands of lockfile lines and needs exact-head CI, integration checks, and review for dependency regressions. A new GitHub Actions production audit gate fails when any high or critical advisory is detected. Remaining moderate and low advisories require review and documented disposition. An advisory result does not alone prove exploitability or non-exploitability.
+
+## October 16 hardening and regression evidence
+
+The non-production Compose override now requires a unique, explicit PostgreSQL/pgvector password and propagates the same database name, username and password into RAG API. A newly configured CI job will test its effective merged configuration without launching containers or using production credentials on a GitHub Actions runner. **Local Docker Compose execution is unavailable on the development laptop**, and neither data-volume migration nor live RAG connectivity has been verified.
+
+The MCP transport redirect-limit boundary was hardened so an over-limit 307/308 throws instead of returning a redirect response a downstream client might follow. The local MCP security suite passed all 70 tests and the combined affected API test suite passed all 303 tests across five suites. The Tailwind typography test now invokes the real CSS compiler from an isolated Node process rather than attempting a process-wide loader inside Jest; the three typography tests passed locally. CI verification of the new exact head remains mandatory.
 
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.

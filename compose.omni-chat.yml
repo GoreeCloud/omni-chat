@@ -1,5 +1,5 @@
-# Source-built development overlay. Requires new authenticated MongoDB volume.
-# Existing unauthenticated data volumes require backup and explicit migration.
+# Development-only source build overlay (not production-qualified).
+# Requires NEW database volumes; existing MongoDB/PostgreSQL volumes need migration.
 services:
   api:
     container_name: omni-chat
@@ -16,3 +16,13 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}
+  vectordb:
+    environment:
+      POSTGRES_DB: OmniChatVectors
+      POSTGRES_USER: omnic
+      POSTGRES_PASSWORD: ${OMNI_POSTGRES_PASSWORD:?Set OMNI_POSTGRES_PASSWORD}
+  rag_api:
+    environment:
+      - POSTGRES_DB=OmniChatVectors
+      - POSTGRES_USER=omnic
+      - POSTGRES_PASSWORD=${OMNI_POSTGRES_PASSWORD:?Set OMNI_POSTGRES_PASSWORD}

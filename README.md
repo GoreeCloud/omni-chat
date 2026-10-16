@@ -14,7 +14,9 @@ You need a supported Node.js/npm environment or Docker and Docker Compose.
 
 Review the inherited configuration and establish unique persistent cryptographic secrets and credentials appropriate to the environment. Do not commit the environment file. For a new development database, configure OMNI_MONGO_ROOT_USERNAME and OMNI_MONGO_ROOT_PASSWORD in .env. Missing values fail Docker Compose configuration. Use a long URL-safe random password. Do not reuse development credentials in production.
 
-Existing databases warning: enabling authentication does not automatically create a database user in an existing data volume. Back up and migrate existing data and credentials separately before using the updated overlay.
+For new vector-database volumes, configure `OMNI_POSTGRES_PASSWORD` in `.env` as well. The source-built development overlay supplies matching PostgreSQL credentials to both `vectordb` and `rag_api`, rather than retaining the upstream sample password. Use long, randomly generated URL-safe values.
+
+**Existing database warning:** enabling MongoDB authentication or changing PostgreSQL initialization credentials does not automatically migrate existing MongoDB/PostgreSQL data volumes. Back up data, establish credentials and restore into an isolated tested target before using the updated overlay. The inherited base Compose file still contains sample services and must never be treated as production-hardened.
 
 To run with a development **API built from this GoreeCloud checkout**, use:
 

@@ -56,6 +56,7 @@ test('backend and API fallbacks use Omni Chat', () => {
   assert.match(example, /^MONGO_URI=mongodb:\/\/127\.0\.0\.1:27017\/OmniChat$/m);
   assert.match(example, /^OMNI_MONGO_ROOT_USERNAME=$/m);
   assert.match(example, /^OMNI_MONGO_ROOT_PASSWORD=$/m);
+  assert.match(example, /^OMNI_POSTGRES_PASSWORD=$/m);
 });
 
 test('development override selects local source and does not use upstream API image', () => {
@@ -66,4 +67,8 @@ test('development override selects local source and does not use upstream API im
   assert.match(compose, /\["mongod", "--auth", "--bind_ip_all"\]/);
   assert.match(compose, /OMNI_MONGO_ROOT_USERNAME/);
   assert.match(compose, /OMNI_MONGO_ROOT_PASSWORD/);
+  assert.match(compose, /OMNI_POSTGRES_PASSWORD/);
+  assert.match(compose, /POSTGRES_DB=OmniChatVectors/);
+  assert.match(compose, /POSTGRES_USER=omnic/);
+  assert.match(file('.github/workflows/omni-chat-validation.yml'), /verify_omni_compose\.mjs/);
 });
