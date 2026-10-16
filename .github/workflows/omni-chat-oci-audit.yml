@@ -1,0 +1,44 @@
+name: Omni Chat pinned upstream OCI vulnerability audit (isolated)
+
+on:
+  push:
+    branches:
+      - audit/omni-chat-oci-20261016
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-pinned-image:
+    name: Trivy audit ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: rag-api
+            image: registry.librechat.ai/librechat-ai/librechat-rag-api-dev-lite@sha256:a62ce2221b43a9bb57fa6cb733e7047c80132960272c33d5704028f3071a1251
+          - service: admin-panel
+            image: registry.librechat.ai/clickhouse/librechat-admin-panel@sha256:a395465d1daa3c11495810a8c224df86675985d50de42e98e36eeedbd8aecb94
+    steps:
+      - name: Scan image by immutable digest without executing it
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ matrix.image }}
+          format: json
+          output: trivy-image-report.json
+          scanners: vuln,license
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          ignore-unfixed: false
+          exit-code: '0'
+        env:
+          TRIVY_SKIP_DB_UPDATE: 'false'
+      - name: Upload triage evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: omni-chat-oci-${{ matrix.service }}-audit
+          path: trivy-image-report.json
+          if-no-files-found: warn
+          retention-days: 7
