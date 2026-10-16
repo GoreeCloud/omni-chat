@@ -60,6 +60,16 @@ At `67bcde39e8e87839cb09c133d284bb4b6664db9f`, 10 GitHub workflow groups passed,
 
 The inherited development Compose file allowed `MEILI_MASTER_KEY` to expand to an empty value. The Omni Chat overlay now requires a dedicated `OMNI_MEILI_MASTER_KEY` and uses the same secret for the source-built API and Meilisearch. An absent or empty key must make Compose configuration fail before containers launch, including when the optional search feature is disabled. Synthetic merged-configuration CI tests verify shared nonempty credentials, alongside MongoDB, PostgreSQL and optional admin-panel restrictions. This is a development-only defense-in-depth change, not a production security review.
 
+## Authenticator enrollment URL boundary
+
+The TOTP enrollment URL now percent-encodes the issuer, account email and secret separately, preserving the required issuer/account label separator while preventing reserved characters in an email address from altering its `otpauth` query. The backend controller regression covers an address containing `+` and `&`, checks the decoded account label and rejects accidental extra parameters. The focused controller suite passed locally. This does not establish physical-authenticator interoperability or authenticated device acceptance; retain these as release gates.
+
+## Authenticator and observability identity hardening
+
+The two-factor enrollment controller now encodes the TOTP issuer, account label, and secret as URL components while preserving the `issuer:account` delimiter. This prevents reserved characters such as `&` in an email from corrupting the authenticator enrollment URI; the regression asserts the decoded label, exact issuer/secret, and absence of additional query parameters. The two affected authentication-controller suites passed **53 tests** locally. Physical-authenticator interoperability and authenticated end-to-end acceptance remain unverified.
+
+The optional OpenTelemetry service name now defaults to `omni-chat` when not explicitly configured, and `.env.example` documents that identity. The existing `librechat.*` telemetry attribute namespace remains untouched for compatibility. The two targeted telemetry config and SDK suites passed **34 tests** locally; deployment-specific collector integration remains a separate qualification gate.
+
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.
 - [x] Upstream MIT copyright obligations acknowledged.

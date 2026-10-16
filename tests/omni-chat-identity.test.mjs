@@ -95,4 +95,5 @@ test('development override selects local source and does not use upstream API im
   assert.match(compose, /POSTGRES_DB=OmniChatVectors/);
   assert.match(compose, /POSTGRES_USER=omnic/);
   assert.match(file('.github/workflows/omni-chat-validation.yml'), /verify_omni_compose\.mjs/);
+  assert.match(file('packages/api/src/telemetry/config.ts'), /DEFAULT_SERVICE_NAME = 'omni-chat'/);
 });
