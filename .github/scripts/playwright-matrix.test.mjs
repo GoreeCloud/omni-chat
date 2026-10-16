@@ -140,6 +140,7 @@ test('both suite commands consume the matrix shard without increasing worker con
   );
   assert.match(config, /workers: 1,/);
   assert.equal(shards['runs-on'], 'ubuntu-latest');
+  assert.ok(shards['timeout-minutes'] >= 45, 'full memory shard and extra email/title checks need 45 minutes');
 });
 
 test('an explicit Redis skip drops both transport shards and no memory shard', (t) => {

@@ -168,7 +168,10 @@ jobs:
       (contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) ||
       github.event.pull_request.head.repo.full_name == github.repository)))
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The first memory shard also executes both registered-email modes and
+    # first-turn title ownership; the 30-minute bound canceled it after
+    # 191 core tests and all follow-ups had passed. Preserve full coverage.
+    timeout-minutes: 45
     # Separate runners isolate each shard's user, MongoDB, Redis and fixture state.
     # Keep workers: 1 in Playwright; shared-user cleanup is not worker-safe.
     strategy:
