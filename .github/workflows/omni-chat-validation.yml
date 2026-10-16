@@ -57,3 +57,12 @@ jobs:
             fi
             echo "Required setting $key rejects empty values"
           done
+  synthetic-recovery-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify disposable MongoDB and pgvector backup/restore
+        env:
+          OMNI_SYNTHETIC_RECOVERY: '1'
+        run: bash scripts/verify_omni_recovery.sh
