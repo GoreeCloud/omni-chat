@@ -26,7 +26,8 @@ test('Omni Chat unauthenticated client accessibility smoke', { timeout: 90000 },
   assert.ok(ready, 'production preview server must be available');
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
-  const page = await browser.newPage({ colorScheme: 'light' });
+  const context = await browser.newContext({ colorScheme: 'light' });
+  const page = await context.newPage();
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.getByText('Omni Chat', { exact: true }).first().waitFor({
     state: 'visible', timeout: 25000,
