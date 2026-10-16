@@ -36,6 +36,10 @@ The upstream-status workflow fetches upstream main history without importing con
 ## Production dependency advisory baseline — October 16, 2026
 A local npm production-dependency audit of the inherited initial lockfile returned 16 advisories (2 critical, 4 high, 4 moderate, 6 low). A non-force npm package-lock-only update reduced the follow-up audit to 10 (0 critical, 0 high, 4 moderate, 6 low). The lockfile update is a **development candidate**, not accepted release evidence. It changes thousands of lockfile lines and needs exact-head CI, integration checks, and review for dependency regressions. A new GitHub Actions production audit gate fails when any high or critical advisory is detected. Remaining moderate and low advisories require review and documented disposition. An advisory result does not alone prove exploitability or non-exploitability.
 
+## October 16 telemetry privacy advisory reduction
+
+The production dependency audit flagged `@opentelemetry/instrumentation-mongoose` below `0.67.0` for recording a database username in tracing attributes (GHSA-qqmp-wf37-98f9). Both affected workspaces (`api` and `packages/api`) now require `^0.69.0`, resolving to `0.69.0` in the lockfile. The follow-up production audit is **9 advisories: 0 critical, 0 high, 3 moderate, 6 low** (down from 10). Three telemetry test suites passed **37/37 tests**, and the shared API package build completed locally. Exact-revision GitHub CI and downstream compatibility checks remain mandatory; telemetry-export privacy also requires runtime qualification.
+
 ## October 16 hardening and regression evidence
 
 The non-production Compose override now requires a unique, explicit PostgreSQL/pgvector password and propagates the same database name, username and password into RAG API. A newly configured CI job will test its effective merged configuration without launching containers or using production credentials on a GitHub Actions runner. **Local Docker Compose execution is unavailable on the development laptop**, and neither data-volume migration nor live RAG connectivity has been verified.

@@ -57,7 +57,7 @@
     "@opentelemetry/instrumentation-http": "^0.207.0",
     "@opentelemetry/instrumentation-ioredis": "^0.55.0",
     "@opentelemetry/instrumentation-mongodb": "^0.60.0",
-    "@opentelemetry/instrumentation-mongoose": "^0.54.0",
+    "@opentelemetry/instrumentation-mongoose": "^0.69.0",
     "@opentelemetry/instrumentation-undici": "^0.18.0",
     "@opentelemetry/resources": "^2.6.1",
     "@opentelemetry/sdk-node": "^0.221.0",
