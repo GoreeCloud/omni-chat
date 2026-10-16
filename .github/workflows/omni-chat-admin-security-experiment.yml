@@ -37,8 +37,8 @@ jobs:
           doc = json.loads(path.read_text())
           assert doc["dependencies"]["@tanstack/react-start"] == "1.167.30"
           assert doc["overrides"]["@tanstack/react-start"] == "1.167.30"
-          doc["dependencies"]["@tanstack/react-start"] = "1.169.39"
-          doc["overrides"]["@tanstack/react-start"] = "1.169.39"
+          doc["dependencies"]["@tanstack/react-start"] = "1.168.60"
+          doc["overrides"]["@tanstack/react-start"] = "1.168.60"
           doc["overrides"]["@tanstack/start-server-core"] = "1.169.39"
           doc["overrides"]["seroval"] = "1.6.3"
           doc["overrides"]["shell-quote"] = "1.8.4"
