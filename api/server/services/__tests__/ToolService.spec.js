@@ -3236,15 +3236,6 @@ describe('ToolService - Action Capability Gating', () => {
         codeWorkspaces: [{ environmentId: 'personal-machine', workspaceId: 'project-a' }],
       };
       mockGetEndpointsConfig.mockResolvedValue(createEndpointsConfig(capabilities));
-      mockResolveCodeExecutionContext.mockReturnValueOnce({
-        baseUrl: 'http://attached-code.test/v1',
-        codeSessionKey: 'execute_code:stateful:attached',
-        executionProfile: 'stateful',
-        statefulSessions: true,
-        environmentType: 'attached',
-        environmentId: 'personal-machine',
-        bridgeWorkerId: 'worker-abc',
-      });
       mockCreateLaneGitRecorder.mockClear();
 
       await loadToolsForExecution({
@@ -3294,15 +3285,6 @@ describe('ToolService - Action Capability Gating', () => {
         codeWorkspaces: [{ environmentId: 'personal-machine', workspaceId: 'project-a' }],
       };
       mockGetEndpointsConfig.mockResolvedValue(createEndpointsConfig(capabilities));
-      mockResolveCodeExecutionContext.mockReturnValueOnce({
-        baseUrl: 'http://attached-code.test/v1',
-        codeSessionKey: 'execute_code:stateful:attached',
-        executionProfile: 'stateful',
-        statefulSessions: true,
-        environmentType: 'attached',
-        environmentId: 'personal-machine',
-        bridgeWorkerId: 'worker-abc',
-      });
       mockCreateLaneGitRecorder.mockClear();
 
       await loadToolsForExecution({
