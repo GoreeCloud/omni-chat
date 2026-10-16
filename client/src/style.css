@@ -1635,8 +1635,8 @@ html {
  * color/width override: the theme's focus-visible ring utilities own both. */
 html:not([data-input-modality='pointer']) .webkit-dark-styles.lc-field:focus-visible {
   box-shadow:
-    var(--tw-ring-offset-shadow, 0 0 #0000),
-    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 transparent),
+    var(--tw-ring-shadow, 0 0 transparent),
     0 0 0 50vh rgb(var(--field-fill, var(--surface-primary))) inset;
 }
 
