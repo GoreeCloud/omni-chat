@@ -50,8 +50,12 @@ test('backend and API fallbacks use Omni Chat', () => {
   for (const name of files) {
     assert.match(file(name), /'Omni Chat'/, name);
   }
-  assert.match(file('.env.example'), /^APP_TITLE=Omni Chat$/m);
-  assert.match(file('.env.example'), /^HELP_AND_FAQ_URL=\/$/m);
+  const example = file('.env.example');
+  assert.match(example, /^APP_TITLE=Omni Chat$/m);
+  assert.match(example, /^HELP_AND_FAQ_URL=\/$/m);
+  assert.match(example, /^MONGO_URI=mongodb:\/\/127\.0\.0\.1:27017\/OmniChat$/m);
+  assert.match(example, /^OMNI_MONGO_ROOT_USERNAME=$/m);
+  assert.match(example, /^OMNI_MONGO_ROOT_PASSWORD=$/m);
 });
 
 test('development override selects local source and does not use upstream API image', () => {
