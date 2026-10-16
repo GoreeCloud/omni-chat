@@ -18,6 +18,10 @@ Mammoth 1.13.0 declares an old CLI-only `argparse@1.x` dependency, which pulled 
 
 The development Compose override now pins the inherited upstream RAG and optional admin-panel images to multi-architecture OCI index digests, and the effective Compose validator rejects mutable image tags. The admin profile also requires a 32-character or longer session secret when enabled; a negative configuration test rejects an empty value. Synthetic Docker Compose checks verified image digests, default admin exclusion and localhost ports without starting containers. See `docs/OMNI_CHAT_IMAGE_PROVENANCE.md` for the recorded digests and review obligations. Image pinning prevents silent upstream tag drift; it does not replace independent third-party vulnerability, license, signature or data-handling review.
 
+## Browser focus-theme regression
+
+Exact commit `48980f96c5b920474a2d36dfc280c72a0b0180e9` passed 11 of 12 GitHub workflow groups, but failed Playwright memory shards 3/6 and 6/6. The failing scenarios include focus outline colors, role-based width/offset, ring-only controls and form theme styles. Root cause: a high-specificity, unlayered `:focus-visible` outline in the product identity bridge overrode existing theme-owned CSS and Tailwind utilities, producing 27 reported focus-test failures. The remedy removes that duplicate declaration, leaving the inherited theme CSS responsible for keyboard-focus styling, and adds a source contract preventing its return. This remedy must pass a fresh exact-head accessibility run and full Playwright shards before the blocker can be marked resolved. Do not delete or weaken the existing focus-theme tests.
+
 ## Release decision
 
 **NO-GO** pending exact-head full end-to-end CI, authenticated and device qualification, approved staging migration and recovery, dependency review, full downstream Glaze qualification, and explicit owner release authorization.

@@ -76,7 +76,7 @@ A local production audit identified KaTeX `0.16.47` as vulnerable to a trust-byp
 
 ## Glaze consumer smoke
 
-The scoped Omni Chat login now tests keyboard focus, reduced motion and theme identity at desktop and mobile sizes. Glaze Stable 1.7.0 inherits its V1.6 runtime; this test does not grant downstream acceptance or physical-device qualification.
+The scoped Omni Chat login tests keyboard focus, reduced motion and theme identity at desktop and mobile sizes. The inherited theme and Tailwind focus roles, rather than the identity bridge, own keyboard outlines and preserve theme-specific colors, ring-only controls, custom widths/offsets and contrast modes. A preceding run exposed a scoped unlayered outline rule that overrode those roles in 27 Playwright cases; that rule was removed and a source regression now forbids product-scoped outline overrides. Exact-head E2E revalidation remains necessary. Glaze Stable 1.7.0 inherits its V1.6 runtime; this test does not grant downstream acceptance or physical-device qualification.
 
 ## MongoDB credential URI safety
 

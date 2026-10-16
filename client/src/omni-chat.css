@@ -4,15 +4,9 @@
 html[data-product='omni-chat'] {
   --omni-radius: 0.875rem;
 }
-@media (forced-colors: none) {
-  /* Visible keyboard focus across links, form controls and action buttons.
-     Respect Windows forced-colors focus treatment rather than overriding it. */
-  html[data-product='omni-chat']
-    :is(a, button, input, textarea, select, [role='button']):focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 3px;
-  }
-}
+/* Use the existing theme-owned focus styles in style.css and the Tailwind
+   focus utilities. A product-scoped unlayered :focus-visible outline would
+   override theme colors, explicit ring-only controls, and role-based sizing. */
 @media (prefers-reduced-motion: reduce) {
   html[data-product='omni-chat'] {
     scroll-behavior: auto;

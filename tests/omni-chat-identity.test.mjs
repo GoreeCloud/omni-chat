@@ -18,6 +18,13 @@ test('browser shell and client default use Omni Chat identity', () => {
   assert.match(shell, /data-product="omni-chat"/);
   assert.match(file('client/src/utils/documentTitle.ts'), /DEFAULT_APP_TITLE = 'Omni Chat'/);
   assert.match(file('client/src/main.jsx'), /import '\.\/omni-chat\.css'/);
+  const scopedCss = file('client/src/omni-chat.css');
+  assert.match(scopedCss, /--omni-radius:/);
+  assert.doesNotMatch(
+    scopedCss,
+    /outline\s*:/,
+    'Omni Chat identity CSS must not override theme-owned keyboard focus outlines',
+  );
 });
 
 test('installable app and sign-in surface use Omni Chat identity', () => {
