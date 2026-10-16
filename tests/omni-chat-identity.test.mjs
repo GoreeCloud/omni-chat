@@ -81,7 +81,9 @@ test('development override selects local source and does not use upstream API im
   const compose = file('compose.omni-chat.yml');
   assert.match(compose, /dockerfile: Dockerfile/);
   assert.match(compose, /APP_TITLE=Omni Chat/);
-  assert.doesNotMatch(compose, /registry\.librechat\.ai/);
+  assert.doesNotMatch(compose.split('  admin-panel:')[0], /registry\.librechat\.ai/);
+  assert.match(compose, /librechat-admin-panel@sha256:[a-f0-9]{64}/);
+  assert.match(compose, /librechat-rag-api-dev-lite@sha256:[a-f0-9]{64}/);
   assert.match(compose, /command: .*--auth.*--bind_ip_all/);
   assert.match(compose, /OMNI_MONGO_ROOT_USERNAME/);
   assert.match(compose, /OMNI_MONGO_ROOT_PASSWORD/);

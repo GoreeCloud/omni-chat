@@ -20,6 +20,11 @@ if (!configPath) {
   const meiliEnv = services.meilisearch.environment;
   const postgresEnv = services.vectordb.environment;
   const ragEnv = services.rag_api.environment;
+  assert.match(
+    services.rag_api.image,
+    /^registry\.librechat\.ai\/librechat-ai\/librechat-rag-api-dev-lite@sha256:[a-f0-9]{64}$/,
+    'RAG image must be pinned to an immutable digest',
+  );
 
   assert.equal(
     services.api.build?.dockerfile,
@@ -42,10 +47,19 @@ if (!configPath) {
   assert.ok(adminConfigPath, 'opt-in admin Compose configuration is required');
   const adminServices = JSON.parse(readFileSync(adminConfigPath, 'utf8')).services;
   assert.ok(adminServices?.['admin-panel'], 'admin profile must activate the admin panel');
+  assert.match(
+    adminServices['admin-panel'].image,
+    /^registry\.librechat\.ai\/clickhouse\/librechat-admin-panel@sha256:[a-f0-9]{64}$/,
+    'opt-in admin image must be pinned to an immutable digest',
+  );
   const published = adminServices['admin-panel'].ports;
   assert.equal(published?.length, 1, 'admin panel must not inherit an extra public port');
   assert.equal(published[0].host_ip, '127.0.0.1', 'admin port must bind to localhost');
   assert.equal(published[0].target, 3000);
+  assert.ok(
+    adminServices['admin-panel'].environment.SESSION_SECRET?.length >= 32,
+    'opt-in admin profile must have a 32+ character session secret',
+  );
   assert.equal(
     adminServices['admin-panel'].environment.SESSION_COOKIE_SECURE,
     'true',

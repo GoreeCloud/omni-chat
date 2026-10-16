@@ -14,6 +14,10 @@ Mammoth 1.13.0 declares an old CLI-only `argparse@1.x` dependency, which pulled 
 
 **Limitations:** A full local monorepo `npm ci` was terminated with exit code 137, so the complete clean-install compatibility has not been verified locally. The exact-head GitHub Actions dependency installation, document conversion suites and broader regression checks must pass before treating this remediation as release-accepted. Do not suppress or waive advisories, and continue tracking Mammoth upstream's CLI migration.
 
+## Immutable development image provenance
+
+The development Compose override now pins the inherited upstream RAG and optional admin-panel images to multi-architecture OCI index digests, and the effective Compose validator rejects mutable image tags. The admin profile also requires a 32-character or longer session secret when enabled; a negative configuration test rejects an empty value. Synthetic Docker Compose checks verified image digests, default admin exclusion and localhost ports without starting containers. See `docs/OMNI_CHAT_IMAGE_PROVENANCE.md` for the recorded digests and review obligations. Image pinning prevents silent upstream tag drift; it does not replace independent third-party vulnerability, license, signature or data-handling review.
+
 ## Release decision
 
 **NO-GO** pending exact-head full end-to-end CI, authenticated and device qualification, approved staging migration and recovery, dependency review, full downstream Glaze qualification, and explicit owner release authorization.

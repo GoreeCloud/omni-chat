@@ -32,6 +32,7 @@ jobs:
       OMNI_MONGO_ROOT_PASSWORD: 'synthetic_mongo_ci_2026'
       OMNI_POSTGRES_PASSWORD: 'synthetic_pg_ci_2026'
       OMNI_MEILI_MASTER_KEY: 'synthetic_search_ci_key_2026_42'
+      ADMIN_PANEL_SESSION_SECRET: 'synthetic_ci_admin_session_not_a_real_secret_2026'
     steps:
       - uses: actions/checkout@v4
       - name: Prepare synthetic configuration
@@ -42,6 +43,15 @@ jobs:
         run: docker compose -f docker-compose.yml -f compose.omni-chat.yml --profile admin config --format json > "$RUNNER_TEMP/omni-chat-admin-compose.json"
       - name: Validate default and opt-in service configuration
         run: node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json" "$RUNNER_TEMP/omni-chat-admin-compose.json"
+      - name: Reject missing admin profile session secret
+        shell: bash
+        run: |
+          env ADMIN_PANEL_SESSION_SECRET='' docker compose -f docker-compose.yml -f compose.omni-chat.yml --profile admin config --format json > "$RUNNER_TEMP/omni-admin-empty-secret.json"
+          if node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json" "$RUNNER_TEMP/omni-admin-empty-secret.json" > "$RUNNER_TEMP/omni-admin-secret-error.log" 2>&1; then
+            echo '::error title=Admin security::Empty admin session secret accepted'
+            exit 1
+          fi
+          grep -Fq 'opt-in admin profile must have a 32+ character session secret' "$RUNNER_TEMP/omni-admin-secret-error.log"
       - name: Reject missing database credentials
         shell: bash
         run: |
