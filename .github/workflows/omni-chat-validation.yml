@@ -14,3 +14,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Omni Chat identity contract
         run: node --test tests/omni-chat-identity.test.mjs
+  production-dependency-advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Block high and critical production advisories
+        run: npm audit --omit=dev --audit-level=high --no-fund

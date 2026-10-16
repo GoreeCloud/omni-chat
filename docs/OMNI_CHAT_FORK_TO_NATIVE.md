@@ -33,6 +33,9 @@ These are targets, not claims of implemented native replacements.
 ## Selective upstream maintenance
 The upstream-status workflow records whether upstream main matches this fork's checkout SHA. Divergence alone is not a security issue or automatic merge order; review upstream commits, release notes, licenses, threat and compatibility impact, then import a scoped, tested update as a GoreeCloud change. Do not overwrite the local product identity, merge unreviewed code, or automatically deploy upstream.
 
+## Production dependency advisory baseline — October 16, 2026
+A local npm production-dependency audit of the inherited initial lockfile returned 16 advisories (2 critical, 4 high, 4 moderate, 6 low). A non-force npm package-lock-only update reduced the follow-up audit to 10 (0 critical, 0 high, 4 moderate, 6 low). The lockfile update is a **development candidate**, not accepted release evidence. It changes thousands of lockfile lines and needs exact-head CI, integration checks, and review for dependency regressions. A new GitHub Actions production audit gate fails when any high or critical advisory is detected. Remaining moderate and low advisories require review and documented disposition. An advisory result does not alone prove exploitability or non-exploitability.
+
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.
 - [x] Upstream MIT copyright obligations acknowledged.
