@@ -81,6 +81,7 @@ test('development override selects local source and does not use upstream API im
   assert.match(compose, /OMNI_POSTGRES_PASSWORD/);
   assert.match(compose, /profiles: \[admin\]/);
   assert.match(compose, /ports: !override/);
+  assert.match(compose, /127\.0\.0\.1:.*PORT:-3080/);
   assert.ok(compose.includes("'127.0.0.1:${ADMIN_PANEL_PORT:-3000}:3000'"));
   assert.match(compose, /SESSION_COOKIE_SECURE: 'true'/);
   assert.match(compose, /POSTGRES_DB=OmniChatVectors/);

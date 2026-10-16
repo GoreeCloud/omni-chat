@@ -7,6 +7,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # The base Compose file publishes API publicly. Development only needs loopback.
+    ports: !override
+      - '127.0.0.1:${PORT:-3080}:${PORT:-3080}'
     environment:
       - APP_TITLE=Omni Chat
       - HELP_AND_FAQ_URL=/

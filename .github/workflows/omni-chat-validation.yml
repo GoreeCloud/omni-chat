@@ -41,3 +41,18 @@ jobs:
         run: docker compose -f docker-compose.yml -f compose.omni-chat.yml --profile admin config --format json > "$RUNNER_TEMP/omni-chat-admin-compose.json"
       - name: Validate default and opt-in service configuration
         run: node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json" "$RUNNER_TEMP/omni-chat-admin-compose.json"
+      - name: Reject missing database credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in OMNI_MONGO_ROOT_USERNAME OMNI_MONGO_ROOT_PASSWORD OMNI_POSTGRES_PASSWORD; do
+            if env "$key=" docker compose -f docker-compose.yml -f compose.omni-chat.yml config --quiet > "$RUNNER_TEMP/omni-missing-credential.log" 2>&1; then
+              echo "::error title=Credential bypass::$key must reject an empty value"
+              exit 1
+            fi
+            if ! grep -Fq "$key" "$RUNNER_TEMP/omni-missing-credential.log"; then
+              echo "::error title=Credential validation::$key did not produce a specific error"
+              exit 1
+            fi
+            echo "Required setting $key rejects empty values"
+          done

@@ -20,6 +20,10 @@ if (!configPath) {
     'API must build from GoreeCloud source',
   );
   assert.equal(apiEnv.APP_TITLE, 'Omni Chat');
+  const apiPorts = services.api.ports;
+  assert.equal(apiPorts?.length, 1, 'API must not inherit an extra public port');
+  assert.equal(apiPorts[0].host_ip, '127.0.0.1', 'development API must bind to localhost');
+  assert.ok(apiPorts[0].target > 0, 'API must keep a valid internal listener');
   assert.equal(
     services['admin-panel'],
     undefined,

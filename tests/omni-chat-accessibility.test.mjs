@@ -89,6 +89,26 @@ test('Omni Chat unauthenticated client accessibility smoke', { timeout: 90000 },
         targets: nodes.map((node) => node.target),
       }));
       assert.deepEqual(violations, [], mode.name + ': ' + JSON.stringify(violations));
+
+      // Invalid empty submissions must be rejected before a network login request.
+      await page.getByTestId('login-button').click();
+      await page.getByRole('alert').first().waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#email').getAttribute('aria-invalid'), 'true');
+      assert.equal(await page.locator('#password').getAttribute('aria-invalid'), 'true');
+      assert.ok((await page.getByRole('alert').count()) >= 2, mode.name + ': field errors');
+      const invalidResults = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      const invalidViolations = invalidResults.violations.map(({ id, impact, nodes }) => ({
+        id,
+        impact,
+        targets: nodes.map((node) => node.target),
+      }));
+      assert.deepEqual(
+        invalidViolations,
+        [],
+        mode.name + ' invalid form: ' + JSON.stringify(invalidViolations),
+      );
     } finally {
       await context.close();
     }
