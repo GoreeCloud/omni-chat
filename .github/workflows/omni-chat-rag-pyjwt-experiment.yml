@@ -1,0 +1,82 @@
+name: Omni Chat RAG pinned-source PyJWT remediation experiment
+
+on:
+  push:
+    branches:
+      - experiment/omni-rag-pyjwt-20261016
+
+permissions:
+  contents: read
+
+jobs:
+  rag-pyjwt-source-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout attested upstream RAG source at exact historical revision
+        uses: actions/checkout@v5
+        with:
+          repository: LibreChat-AI/rag-api
+          ref: c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
+          persist-credentials: false
+          path: upstream-rag
+      - name: Apply one controlled dependency fix in temporary source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          base = Path("upstream-rag")
+          expected = "c4e5cbf79fcece1df9adfff5dfed983a5990ca9f"
+          actual = subprocess.check_output(["git", "-C", str(base), "rev-parse", "HEAD"], text=True).strip()
+          assert actual == expected, (actual, expected)
+          dependency = base / "requirements.lite.txt"
+          source = dependency.read_text()
+          old, new = "PyJWT==2.13.0", "PyJWT==2.14.0"
+          assert source.count(old) == 1, "Unexpected pinned requirements source"
+          dependency.write_text(source.replace(old, new))
+          print("Patched sole PyJWT constraint for synthetic CI build")
+          PY
+      - name: Build ephemeral RAG container from inspected source
+        run: docker build --file upstream-rag/Dockerfile.lite --tag goreecloud-rag-pyjwt:trial --progress plain upstream-rag
+      - name: Scan test image without publishing it
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: goreecloud-rag-pyjwt:trial
+          format: json
+          output: rag-pyjwt-experiment-trivy.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          ignore-unfixed: false
+          exit-code: '0' # Experimental evidence, not a release gate.
+      - name: Verify patched PyJWT is present in built-image scan
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("rag-pyjwt-experiment-trivy.json").read_text())
+          results = report.get("Results") or []
+          if not results:
+              raise SystemExit("No image scan results")
+          packages = [p for r in results for p in (r.get("Packages") or [])]
+          pyjwt = [p for p in packages if p.get("Name", "").lower() == "pyjwt"]
+          findings = [v for r in results for v in (r.get("Vulnerabilities") or [])]
+          vulnerable = [v for v in findings if v.get("VulnerabilityID") == "CVE-2026-102268"]
+          print("PyJWT packages:", [(x.get("Name"), x.get("Version")) for x in pyjwt])
+          print("Remaining critical findings:", [
+              v.get("VulnerabilityID") for v in findings if v.get("Severity") == "CRITICAL"
+          ])
+          if not pyjwt or not all(p.get("Version") == "2.14.0" for p in pyjwt):
+              raise SystemExit("Built image does not contain the intended fixed PyJWT")
+          if vulnerable:
+              raise SystemExit("Previous PyJWT CVE is still detected")
+          PY
+      - name: Save experimental vulnerability evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: omni-chat-rag-pyjwt-experiment
+          path: rag-pyjwt-experiment-trivy.json
+          if-no-files-found: warn
+          retention-days: 7
