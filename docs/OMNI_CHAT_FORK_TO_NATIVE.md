@@ -78,6 +78,10 @@ A local production audit identified KaTeX `0.16.47` as vulnerable to a trust-byp
 
 The scoped Omni Chat login now tests keyboard focus, reduced motion and theme identity at desktop and mobile sizes. Glaze Stable 1.7.0 inherits its V1.6 runtime; this test does not grant downstream acceptance or physical-device qualification.
 
+## MongoDB credential URI safety
+
+The development overlay now passes a credential-free MongoDB base URI plus separate required root-credential environment variables. The API encodes each credential before attaching it to the MongoDB URL, preventing reserved password characters from changing the URI structure. The resolver rejects missing credential pairs and unexpected MongoDB hosts or databases, while preserving existing MONGO_URI behavior when the Omni Chat development variables are absent. Local regression tests cover malformed inputs and reserved characters; deployment and existing-volume migrations remain unqualified.
+
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.
 - [x] Upstream MIT copyright obligations acknowledged.

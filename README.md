@@ -12,7 +12,7 @@ You need a supported Node.js/npm environment or Docker and Docker Compose.
     cd omni-chat
     cp .env.example .env
 
-Review the inherited configuration and establish unique persistent cryptographic secrets and credentials appropriate to the environment. Do not commit the environment file. For a new development database, configure OMNI_MONGO_ROOT_USERNAME and OMNI_MONGO_ROOT_PASSWORD in .env. Missing values fail Docker Compose configuration. Use a long URL-safe random password. Do not reuse development credentials in production.
+Review the inherited configuration and establish unique persistent cryptographic secrets and credentials appropriate to the environment. Do not commit the environment file. For a new development database, configure OMNI_MONGO_ROOT_USERNAME and OMNI_MONGO_ROOT_PASSWORD in .env. Missing values fail Docker Compose configuration. Use a long unique random password. The source-built API encodes MongoDB credentials before building the connection URI, so reserved characters such as `@`, `%`, and `#` work correctly. Do not reuse development credentials in production.
 
 For new vector-database volumes, configure `OMNI_POSTGRES_PASSWORD` in `.env` as well. The source-built development overlay supplies matching PostgreSQL credentials to both `vectordb` and `rag_api`, rather than retaining the upstream sample password. Use long, randomly generated URL-safe values.
 

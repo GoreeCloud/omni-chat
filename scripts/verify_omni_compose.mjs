@@ -55,10 +55,9 @@ if (!configPath) {
   assert.equal(typeof mongoEnv.MONGO_INITDB_ROOT_USERNAME, 'string');
   assert.ok(mongoEnv.MONGO_INITDB_ROOT_USERNAME.length > 0);
   assert.ok(mongoEnv.MONGO_INITDB_ROOT_PASSWORD?.length > 0);
-  assert.match(
-    apiEnv.MONGO_URI,
-    /mongodb:\/\/[^:]+:[^@]+@mongodb:27017\/OmniChat\?authSource=admin/,
-  );
+  assert.equal(apiEnv.MONGO_URI, 'mongodb://mongodb:27017/OmniChat?authSource=admin');
+  assert.equal(apiEnv.OMNI_MONGO_ROOT_USERNAME, mongoEnv.MONGO_INITDB_ROOT_USERNAME);
+  assert.equal(apiEnv.OMNI_MONGO_ROOT_PASSWORD, mongoEnv.MONGO_INITDB_ROOT_PASSWORD);
   assert.equal(postgresEnv.POSTGRES_DB, 'OmniChatVectors');
   assert.equal(ragEnv.POSTGRES_DB, postgresEnv.POSTGRES_DB);
   assert.equal(ragEnv.POSTGRES_USER, postgresEnv.POSTGRES_USER);

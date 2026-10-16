@@ -14,7 +14,10 @@ services:
       - APP_TITLE=Omni Chat
       - HELP_AND_FAQ_URL=/
       - MEILI_MASTER_KEY=${OMNI_MEILI_MASTER_KEY:?Set OMNI_MEILI_MASTER_KEY}
-      - MONGO_URI=mongodb://${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}:${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}@mongodb:27017/OmniChat?authSource=admin
+      # Credential encoding happens in api/db/omniMongoUri.js, not YAML.
+      - MONGO_URI=mongodb://mongodb:27017/OmniChat?authSource=admin
+      - OMNI_MONGO_ROOT_USERNAME=${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}
+      - OMNI_MONGO_ROOT_PASSWORD=${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}
   admin-panel:
     # Opt in explicitly with --profile admin. The inherited image is still
     # third-party and must not be part of the default development stack.
