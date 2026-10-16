@@ -52,12 +52,34 @@ test('Omni Chat unauthenticated client accessibility smoke', { timeout: 90000 },
     });
     try {
       const page = await context.newPage();
+      await page.route('**/api/config*', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            appTitle: 'Omni Chat',
+            emailLoginEnabled: true,
+            registrationEnabled: false,
+            socialLoginEnabled: false,
+            passkeyLoginEnabled: false,
+            passwordResetEnabled: false,
+            serverDomain: 'http://127.0.0.1:4179',
+          }),
+        }),
+      );
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
       await page.getByText('Omni Chat', { exact: true }).first().waitFor({
         state: 'visible',
         timeout: 25000,
       });
       assert.equal(await page.title(), 'Omni Chat', mode.name);
+      await page.getByRole('form', { name: 'Login form' }).waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#email').isVisible(), true, mode.name + ' email input');
+      assert.equal(
+        await page.locator('#password').isVisible(),
+        true,
+        mode.name + ' password input',
+      );
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
