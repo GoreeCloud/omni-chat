@@ -43,6 +43,12 @@ test('marketplace, insights, footer, and diagnostics use Omni Chat branding', ()
   assert.match(file('client/src/components/Insights/InsightsView.tsx'), /\| Omni Chat/);
   assert.match(file('client/src/components/Chat/Footer.tsx'), /\[Omni Chat /);
   assert.match(file('client/src/components/Chat/Footer.tsx'), /github\.com\/GoreeCloud\/omni-chat/);
+  // The welcome disclaimer browser regression must follow the branded footer,
+  // not assert an obsolete upstream link and falsely fail a healthy page.
+  assert.match(
+    file('e2e/specs/mock/scenarios/welcome-disclaimer.spec.ts'),
+    /a\[href=.*github\.com\/GoreeCloud\/omni-chat/,
+  );
   assert.match(
     file('client/src/components/Nav/SettingsTabs/About/About.tsx'),
     /Omni Chat \(LibreChat-derived\) version:/,

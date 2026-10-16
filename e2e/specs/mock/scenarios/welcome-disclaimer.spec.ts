@@ -13,7 +13,8 @@ import { deleteConversations, deleteMessagesByConversation, seedConversations } 
  * projects and skip the mobile one.
  */
 
-const DISCLAIMER = 'a[href="https://librechat.ai"]';
+// Default Omni Chat footer links to the public GoreeCloud project, not upstream LibreChat.
+const DISCLAIMER = 'a[href="https://github.com/GoreeCloud/omni-chat"]';
 /** WCAG AA for body text; the disclaimer renders at 12px. */
 const AA_CONTRAST = 4.5;
 
