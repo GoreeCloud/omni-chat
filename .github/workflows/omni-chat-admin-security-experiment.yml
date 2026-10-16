@@ -50,6 +50,26 @@ jobs:
           doc["overrides"]["@tanstack/react-start-server"] = "1.167.46"
           doc["overrides"]["seroval"] = "1.6.3"
           doc["overrides"]["shell-quote"] = "1.8.4"
+          # Keep the official Start/Router peer graph coherent; the upstream
+          # Admin Panel's old overrides otherwise force incompatible modules.
+          versions = {
+              "@tanstack/router-core": "1.171.34",
+              "@tanstack/router-plugin": "1.168.42",
+              "@tanstack/router-generator": "1.167.40",
+              "@tanstack/history": "1.162.4",
+              "@tanstack/react-store": "0.11.2",
+              "@tanstack/start-fn-stubs": "1.162.0",
+              "@tanstack/start-storage-context": "1.167.36",
+              "seroval": "1.6.7",
+              "@babel/core": "7.29.7",
+              "zod": "4.5.4",
+          }
+          for name, version in versions.items():
+              if name in doc.get("dependencies", {}):
+                  doc["dependencies"][name] = version
+              if name in doc.get("devDependencies", {}):
+                  doc["devDependencies"][name] = version
+              doc["overrides"][name] = version
           path.write_text(json.dumps(doc, indent=2) + "\n")
           dockerfile = src / "Dockerfile"
           original = dockerfile.read_text()
