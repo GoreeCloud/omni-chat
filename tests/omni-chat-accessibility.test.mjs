@@ -112,8 +112,7 @@ test('Omni Chat unauthenticated client accessibility smoke', { timeout: 90000 },
       // an actual changed visual indicator rather than one implementation.
       const hasOutline =
         focusStyle.outlineStyle !== 'none' && Number.parseFloat(focusStyle.width) >= 2;
-      const hasRing =
-        focusStyle.shadow !== 'none' && focusStyle.shadow !== unfocusedStyle.shadow;
+      const hasRing = focusStyle.shadow !== 'none' && focusStyle.shadow !== unfocusedStyle.shadow;
       assert.ok(
         hasOutline || hasRing,
         mode.name + ' needs an outline or a focus-only CSS ring: ' + JSON.stringify(focusStyle),
