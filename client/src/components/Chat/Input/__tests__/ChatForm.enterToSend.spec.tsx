@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { useAtom } from 'jotai';
+import { isSubmittingFamily } from '@librechat/chat/react';
 import '@testing-library/jest-dom';
 import { DndProvider } from 'react-dnd';
 import { useForm } from 'react-hook-form';
@@ -24,14 +26,13 @@ const conversation = {
 } as TConversation;
 
 /**
- * The atom default (`atomWithLocalStorage('enterToSend', true)`) always stays
- * true here: these tests prove the composer follows the `enterToSend` prop
- * ChatView passes it, not the atom it used to read directly, so the prop is
- * deliberately set opposite to that default.
+ * The atom keeps its default (`atomWithLocalStorage('enterToSend', false)`)
+ * here: these tests prove the composer follows the `enterToSend` prop ChatView
+ * passes it, not the atom it used to read directly, so each value is covered.
  */
 function Harness({ enterToSend }: { enterToSend: boolean }) {
   const [files, setFiles] = useRecoilState(store.filesByIndex(0));
-  const [isSubmitting] = useRecoilState(store.isSubmittingFamily(0));
+  const [isSubmitting] = useAtom(isSubmittingFamily(0));
   const [, setFilesLoading] = useState(false);
   const methods = useForm<ChatFormValues>({ defaultValues: { text: '' } });
 
@@ -111,7 +112,7 @@ describe('ChatForm enterToSend prop', () => {
     localStorage.clear();
   });
 
-  test('follows the prop when it disagrees with the persisted default', async () => {
+  test('follows the prop when it agrees with the persisted default', async () => {
     renderComposer({ enterToSend: false });
 
     const textarea = await screen.findByTestId('text-input');
@@ -123,7 +124,7 @@ describe('ChatForm enterToSend prop', () => {
     expect(hint).not.toHaveTextContent('Enter to send');
   }, 20000);
 
-  test('reflects the prop when it agrees with the persisted default', async () => {
+  test('follows the prop when it disagrees with the persisted default', async () => {
     renderComposer({ enterToSend: true });
 
     const textarea = await screen.findByTestId('text-input');

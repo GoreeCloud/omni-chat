@@ -7,6 +7,13 @@ import { QueryKeys, EModelEndpoint } from 'librechat-data-provider';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useNavigate, useLocation } from 'react-router-dom';
+import { isSubmittingFamily, resetSubmitting } from '@librechat/chat/react';
+import { Provider as JotaiProvider, createStore, getDefaultStore, useAtom } from 'jotai';
+import {
+  activeGenerationCreatedAtByConvoId,
+  activeGenerationProtocolVersionByConvoId,
+  showStopButtonByIndex,
+} from '@librechat/chat/react';
 import type { TConversation } from 'librechat-data-provider';
 import type { Transport } from '~/hooks/Chat/contract';
 import type { ChatFormValues } from '~/common';
@@ -51,7 +58,7 @@ function Harness({
   speechSettingsInitialized?: boolean;
 }) {
   const [files, setFiles] = useRecoilState(store.filesByIndex(0));
-  const [isSubmitting] = useRecoilState(store.isSubmittingFamily(0));
+  const [isSubmitting] = useAtom(isSubmittingFamily(0));
   const [, setFilesLoading] = useState(false);
   const methods = useForm<ChatFormValues>({ defaultValues: { text: '' } });
   const chatHelpers = useMemo<React.ContextType<typeof ChatContext>>(
@@ -72,6 +79,7 @@ function Harness({
       messagesKey: 'new',
       latestMessageId: undefined,
       latestMessageDepth: undefined,
+      useLiveAttachments: () => ({}),
       feedbackEnabled: false,
       setMessages: () => undefined,
       ask: onAsk,
@@ -161,34 +169,36 @@ function mountComposer(
     location = useLocation();
     return null;
   }
+  const jotaiStore = createStore();
+  if (liveRun) {
+    jotaiStore.set(showStopButtonByIndex(0), true);
+    jotaiStore.set(activeGenerationCreatedAtByConvoId(conversation.conversationId ?? ''), 1000);
+    jotaiStore.set(activeGenerationProtocolVersionByConvoId(conversation.conversationId ?? ''), 2);
+  }
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <RecoilRoot
-        initializeState={({ set }) => {
-          if (liveRun) {
-            set(store.isSubmittingFamily(0), true);
-            set(store.showStopButtonByIndex(0), true);
-            set(store.activeGenerationCreatedAtByConvoId(conversation.conversationId ?? ''), 1000);
-            set(
-              store.activeGenerationProtocolVersionByConvoId(conversation.conversationId ?? ''),
-              2,
-            );
-          }
-          if (speechSettingsInitialized) {
-            set(store.engineSTT, 'external');
-            set(store.autoTranscribeAudio, false);
-          }
-        }}
-      >
-        <MemoryRouter initialEntries={[`${pathname}?${query}`]}>
-          <NavigationBridge />
-          <AuthContextProvider authConfig={{ loginRedirect: '', test: true }}>
-            <ChatTransportContext.Provider value={transport}>
-              <DndProvider backend={HTML5Backend}>{children}</DndProvider>
-            </ChatTransportContext.Provider>
-          </AuthContextProvider>
-        </MemoryRouter>
-      </RecoilRoot>
+      <JotaiProvider store={jotaiStore}>
+        <RecoilRoot
+          initializeState={({ set }) => {
+            if (liveRun) {
+              jotaiStore.set(isSubmittingFamily(0), true);
+            }
+            if (speechSettingsInitialized) {
+              set(store.engineSTT, 'external');
+              set(store.autoTranscribeAudio, false);
+            }
+          }}
+        >
+          <MemoryRouter initialEntries={[`${pathname}?${query}`]}>
+            <NavigationBridge />
+            <AuthContextProvider authConfig={{ loginRedirect: '', test: true }}>
+              <ChatTransportContext.Provider value={transport}>
+                <DndProvider backend={HTML5Backend}>{children}</DndProvider>
+              </ChatTransportContext.Provider>
+            </AuthContextProvider>
+          </MemoryRouter>
+        </RecoilRoot>
+      </JotaiProvider>
     </QueryClientProvider>
   );
   const view = render(
@@ -203,6 +213,10 @@ function mountComposer(
   );
   return { ...view, navigate: (to: string) => navigate(to), getLocation: () => location };
 }
+
+afterEach(() => {
+  resetSubmitting(getDefaultStore());
+});
 
 describe('ChatForm URL submission', () => {
   beforeEach(() => {

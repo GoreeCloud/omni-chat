@@ -1,16 +1,16 @@
 import { useCallback } from 'react';
-import { useSetAtom } from 'jotai';
 import { useToastContext } from '@librechat/client';
-import { useRecoilValue, useRecoilCallback } from 'recoil';
+import { useSetAtom, useAtomValue, useStore } from 'jotai';
 import { DEFAULT_STEER_ARM_CONFIRMATION_TIMEOUT_MS } from 'librechat-data-provider';
 import {
-  supportsGenerationProtocolV2,
-  useArmSteerMutation,
-  useGetStartupConfig,
-} from '~/data-provider';
-import { escalatingSteerFamily } from '~/store/steer';
+  escalatingSteerFamily,
+  pendingSteersByConvoId,
+  activeGenerationCreatedAtByConvoId,
+  activeGenerationProtocolVersionByConvoId,
+} from '@librechat/chat/react';
+import { supportsGenerationProtocolV2, useArmSteerMutation } from '~/data-provider';
+import { useChatSettings } from '~/Providers/ChatSettingsContext';
 import useLocalize from '~/hooks/useLocalize';
-import store from '~/store';
 
 type ArmFailure = {
   name?: string;
@@ -50,31 +50,30 @@ export default function useSteerEscalate(conversationId: string) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const { mutateAsync: armSteer } = useArmSteerMutation();
-  const { data: startupConfig } = useGetStartupConfig();
+  const { config } = useChatSettings();
   const armConfirmTimeoutMs =
-    startupConfig?.interface?.steerArmConfirmationTimeoutMs ??
-    DEFAULT_STEER_ARM_CONFIRMATION_TIMEOUT_MS;
+    config.steerArmConfirmationTimeoutMs ?? DEFAULT_STEER_ARM_CONFIRMATION_TIMEOUT_MS;
   const setEscalating = useSetAtom(escalatingSteerFamily(conversationId));
-  const activeGenerationCreatedAt = useRecoilValue(
-    store.activeGenerationCreatedAtByConvoId(conversationId),
+  const jotaiStore = useStore();
+  const activeGenerationCreatedAt = useAtomValue(
+    activeGenerationCreatedAtByConvoId(conversationId),
   );
-  const activeGenerationProtocolVersion = useRecoilValue(
-    store.activeGenerationProtocolVersionByConvoId(conversationId),
+  const activeGenerationProtocolVersion = useAtomValue(
+    activeGenerationProtocolVersionByConvoId(conversationId),
   );
 
   /** Relabels the chip in place once the server confirms the durable arm:
    *  same steerId, same position, only the `preempt` flag flips. */
-  const markSteerPreempt = useRecoilCallback(
-    ({ set }) =>
-      (steerId: string, revision: number) =>
-        set(store.pendingSteersByConvoId(conversationId), (prev) =>
-          prev.map((item) =>
-            item.steerId === steerId && revision >= (item.preemptRevision ?? 0)
-              ? { ...item, preempt: true, preemptRevision: revision }
-              : item,
-          ),
+  const markSteerPreempt = useCallback(
+    (steerId: string, revision: number) =>
+      jotaiStore.set(pendingSteersByConvoId(conversationId), (prev) =>
+        prev.map((item) =>
+          item.steerId === steerId && revision >= (item.preemptRevision ?? 0)
+            ? { ...item, preempt: true, preemptRevision: revision }
+            : item,
         ),
-    [conversationId],
+      ),
+    [conversationId, jotaiStore],
   );
 
   return useCallback(

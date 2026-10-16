@@ -1,11 +1,21 @@
 import React from 'react';
 import { RecoilRoot } from 'recoil';
 import { act, renderHook } from '@testing-library/react';
-import { ReasoningEffort } from 'librechat-data-provider';
 import { createStore, Provider as JotaiProvider } from 'jotai';
-import { pendingReasoningOverrideFamily } from '~/components/Chat/Input/Composer/state';
+import { Constants, ReasoningEffort } from 'librechat-data-provider';
+import {
+  abortScrollFamily,
+  showStopButtonByIndex,
+  submissionStartFamily,
+} from '@librechat/chat/react';
+import {
+  pendingQuotesByConvoId,
+  pendingManualSkillsByConvoId,
+  pendingReasoningOverrideFamily,
+} from '~/components/Chat/Input/Composer/state';
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
 import useClearStates from '../useClearStates';
+import store from '~/store';
 
 describe('useClearStates', () => {
   /* Jotai's default store outlives the authenticated route, so a file manager
@@ -52,5 +62,61 @@ describe('useClearStates', () => {
     expect(
       jotaiStore.get(pendingReasoningOverrideFamily('unmounted-conversation')),
     ).toBeUndefined();
+  });
+
+  /* Quotes and skill picks are keyed by conversation, so a chat staged and then
+     left (the shared new-chat key included) still holds them at sign-out. */
+  it('drops staged quotes and skill picks for every conversation, mounted or not', async () => {
+    const jotaiStore = createStore();
+    jotaiStore.set(pendingQuotesByConvoId(Constants.NEW_CONVO), ['quote']);
+    jotaiStore.set(pendingManualSkillsByConvoId(Constants.NEW_CONVO), ['writer']);
+    jotaiStore.set(pendingQuotesByConvoId('unmounted-conversation'), ['quote']);
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <JotaiProvider store={jotaiStore}>
+        <RecoilRoot>{children}</RecoilRoot>
+      </JotaiProvider>
+    );
+
+    const { result } = renderHook(() => useClearStates(), { wrapper });
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(Array.from(pendingQuotesByConvoId.getParams())).toEqual([]);
+    expect(Array.from(pendingManualSkillsByConvoId.getParams())).toEqual([]);
+    expect(jotaiStore.get(pendingQuotesByConvoId(Constants.NEW_CONVO))).toEqual([]);
+    expect(jotaiStore.get(pendingManualSkillsByConvoId(Constants.NEW_CONVO))).toEqual([]);
+  });
+
+  /* `skipFirst` keeps the landing pane's run state; every other pane's stop
+     button, scroll latch and elapsed baseline reset so the next session starts idle. */
+  it.each([
+    [false, [false, false]],
+    [true, [true, false]],
+  ])('resets per-pane run state (skipFirst %s)', async (skipFirst, expected) => {
+    const jotaiStore = createStore();
+    for (const key of [0, 1]) {
+      jotaiStore.set(showStopButtonByIndex(key), true);
+      jotaiStore.set(abortScrollFamily(key), true);
+      jotaiStore.set(submissionStartFamily(key), 1000);
+    }
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <JotaiProvider store={jotaiStore}>
+        <RecoilRoot initializeState={({ set }) => set(store.conversationKeysAtom, [0, 1])}>
+          {children}
+        </RecoilRoot>
+      </JotaiProvider>
+    );
+
+    const { result } = renderHook(() => useClearStates(), { wrapper });
+    await act(async () => {
+      await result.current(skipFirst);
+    });
+
+    expect([0, 1].map((key) => jotaiStore.get(showStopButtonByIndex(key)))).toEqual(expected);
+    expect([0, 1].map((key) => jotaiStore.get(abortScrollFamily(key)))).toEqual(expected);
+    expect([0, 1].map((key) => jotaiStore.get(submissionStartFamily(key)))).toEqual(
+      expected.map((kept) => (kept ? 1000 : null)),
+    );
   });
 });
