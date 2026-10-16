@@ -233,8 +233,8 @@ export function getOpenAIConfig(
     configOptions.defaultHeaders = Object.assign(
       {
         'HTTP-Referer': 'https://librechat.ai',
-        'X-Title': 'LibreChat',
-        'X-OpenRouter-Title': 'LibreChat',
+        'X-Title': 'Omni Chat',
+        'X-OpenRouter-Title': 'Omni Chat',
         'X-OpenRouter-Categories': 'general-chat,personal-agent,programming-app',
       },
       headers,

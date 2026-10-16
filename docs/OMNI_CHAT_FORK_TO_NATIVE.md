@@ -18,6 +18,8 @@ The original conversation engine, model-provider integrations, client navigation
 
 Existing deployments may have stored settings and overridden environment variables. Do not assume they will automatically migrate or be rebranded.
 
+For new development databases, the updated Compose overlay requires MongoDB credentials and enables mongod --auth. Existing data volumes require a reviewed backup and credential migration. This is not a production security qualification.
+
 ## Native interfaces and transition plan
 1. **Identity and presentation:** owned configuration, product naming, logo family, onboarding and locale strings.
 2. **Glaze design:** use the currently qualified Stable Glaze design system across navigation, conversations, overlays, empty and error states, responsive/mobile behavior, contrast themes, focus order and keyboard workflows.

@@ -1,5 +1,5 @@
-# Development overlay for building the Omni Chat API from this repository.
-# Usage: docker compose -f docker-compose.yml -f compose.omni-chat.yml up --build
+# Source-built development overlay. Requires new authenticated MongoDB volume.
+# Existing unauthenticated data volumes require backup and explicit migration.
 services:
   api:
     container_name: omni-chat
@@ -10,4 +10,9 @@ services:
     environment:
       - APP_TITLE=Omni Chat
       - HELP_AND_FAQ_URL=/
-      - MONGO_URI=mongodb://mongodb:27017/OmniChat
+      - MONGO_URI=mongodb://${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}:${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}@mongodb:27017/OmniChat?authSource=admin
+  mongodb:
+    command: ["mongod", "--auth", "--bind_ip_all"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}

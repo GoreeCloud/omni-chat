@@ -211,7 +211,7 @@ export function useAppBridge({
     const { locale, timeZone } = Intl.DateTimeFormat().resolvedOptions();
     const bridge = new AppBridge(
       null,
-      { name: 'LibreChat', version: '1.0.0' },
+      { name: 'Omni Chat', version: '1.0.0' },
       {
         openLinks: {},
         logging: {},

@@ -20,6 +20,24 @@ test('browser shell and client default use Omni Chat identity', () => {
   assert.match(file('client/src/main.jsx'), /import '\.\/omni-chat\.css'/);
 });
 
+test('installable app and sign-in surface use Omni Chat identity', () => {
+  const vite = file('client/vite.config.ts');
+  assert.match(vite, /name: 'Omni Chat'/);
+  assert.match(vite, /short_name: 'Omni Chat'/);
+  assert.doesNotMatch(vite, /short_name: 'LibreChat'/);
+  const auth = file('client/src/components/Auth/AuthLayout.tsx');
+  assert.match(auth, /assets\/omni-chat-mark\.svg/);
+  assert.match(auth, /\{startupConfig\?\.appTitle \|\| 'Omni Chat'\}/);
+  assert.doesNotMatch(auth, /src="assets\/logo\.svg"/);
+});
+
+test('model integration metadata and MCP bridge identify Omni Chat', () => {
+  const openRouter = file('packages/api/src/endpoints/openai/config.ts');
+  assert.match(openRouter, /'X-Title': 'Omni Chat'/);
+  assert.match(openRouter, /'X-OpenRouter-Title': 'Omni Chat'/);
+  assert.match(file('client/src/hooks/MCP/useAppBridge.ts'), /name: 'Omni Chat'/);
+});
+
 test('backend and API fallbacks use Omni Chat', () => {
   const files = [
     'api/server/routes/config.js',
@@ -41,4 +59,7 @@ test('development override selects local source and does not use upstream API im
   assert.match(compose, /dockerfile: Dockerfile/);
   assert.match(compose, /APP_TITLE=Omni Chat/);
   assert.doesNotMatch(compose, /registry\.librechat\.ai/);
+  assert.match(compose, /\["mongod", "--auth", "--bind_ip_all"\]/);
+  assert.match(compose, /OMNI_MONGO_ROOT_USERNAME/);
+  assert.match(compose, /OMNI_MONGO_ROOT_PASSWORD/);
 });

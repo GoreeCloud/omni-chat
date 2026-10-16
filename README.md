@@ -12,7 +12,9 @@ You need a supported Node.js/npm environment or Docker and Docker Compose.
     cd omni-chat
     cp .env.example .env
 
-Review the inherited configuration and establish unique persistent cryptographic secrets and credentials appropriate to the environment. Do not commit the environment file.
+Review the inherited configuration and establish unique persistent cryptographic secrets and credentials appropriate to the environment. Do not commit the environment file. For a new development database, configure OMNI_MONGO_ROOT_USERNAME and OMNI_MONGO_ROOT_PASSWORD in .env. Missing values fail Docker Compose configuration. Use a long URL-safe random password. Do not reuse development credentials in production.
+
+Existing databases warning: enabling authentication does not automatically create a database user in an existing data volume. Back up and migrate existing data and credentials separately before using the updated overlay.
 
 To run with a development **API built from this GoreeCloud checkout**, use:
 
