@@ -38,6 +38,14 @@ test('model integration metadata and MCP bridge identify Omni Chat', () => {
   assert.match(file('client/src/hooks/MCP/useAppBridge.ts'), /name: 'Omni Chat'/);
 });
 
+test('marketplace, insights, footer, and diagnostics use Omni Chat branding', () => {
+  assert.match(file('client/src/components/Agents/Marketplace.tsx'), /\| Omni Chat/);
+  assert.match(file('client/src/components/Insights/InsightsView.tsx'), /\| Omni Chat/);
+  assert.match(file('client/src/components/Chat/Footer.tsx'), /\[Omni Chat /);
+  assert.match(file('client/src/components/Chat/Footer.tsx'), /github\.com\/GoreeCloud\/omni-chat/);
+  assert.match(file('client/src/components/Nav/SettingsTabs/About/About.tsx'), /Omni Chat \(LibreChat-derived\) version:/);
+});
+
 test('backend and API fallbacks use Omni Chat', () => {
   const files = [
     'api/server/routes/config.js',
