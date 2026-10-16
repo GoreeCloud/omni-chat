@@ -76,6 +76,8 @@ test('development override selects local source and does not use upstream API im
   assert.match(compose, /OMNI_MONGO_ROOT_USERNAME/);
   assert.match(compose, /OMNI_MONGO_ROOT_PASSWORD/);
   assert.match(compose, /OMNI_POSTGRES_PASSWORD/);
+  assert.match(compose, /profiles: \[admin\]/);
+  assert.match(compose, /SESSION_COOKIE_SECURE: 'true'/);
   assert.match(compose, /POSTGRES_DB=OmniChatVectors/);
   assert.match(compose, /POSTGRES_USER=omnic/);
   assert.match(file('.github/workflows/omni-chat-validation.yml'), /verify_omni_compose\.mjs/);

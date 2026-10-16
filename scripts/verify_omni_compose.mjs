@@ -20,6 +20,15 @@ if (!configPath) {
     'API must build from GoreeCloud source',
   );
   assert.equal(apiEnv.APP_TITLE, 'Omni Chat');
+  assert.ok(
+    services['admin-panel']?.profiles?.includes('admin'),
+    'admin panel must be opt-in and absent from default Compose up',
+  );
+  assert.equal(
+    services['admin-panel'].environment.SESSION_COOKIE_SECURE,
+    'true',
+    'admin panel must require secure session cookies by default',
+  );
   assert.deepEqual(services.mongodb.command, ['mongod', '--auth', '--bind_ip_all']);
   assert.equal(typeof mongoEnv.MONGO_INITDB_ROOT_USERNAME, 'string');
   assert.ok(mongoEnv.MONGO_INITDB_ROOT_USERNAME.length > 0);

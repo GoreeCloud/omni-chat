@@ -11,6 +11,12 @@ services:
       - APP_TITLE=Omni Chat
       - HELP_AND_FAQ_URL=/
       - MONGO_URI=mongodb://${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}:${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}@mongodb:27017/OmniChat?authSource=admin
+  admin-panel:
+    # Opt in explicitly with --profile admin. The inherited image is still
+    # third-party and must not be part of the default development stack.
+    profiles: [admin]
+    environment:
+      SESSION_COOKIE_SECURE: 'true'
   mongodb:
     command: ["mongod", "--auth", "--bind_ip_all"]
     environment:

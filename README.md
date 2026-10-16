@@ -22,7 +22,9 @@ To run with a development **API built from this GoreeCloud checkout**, use:
 
     docker compose -f docker-compose.yml -f compose.omni-chat.yml up --build
 
-This is **development-only**. Other services in the inherited Compose configuration still use third-party images, and the inherited MongoDB development service is unauthenticated. Do not expose the default stack to the public internet or treat it as production-hardened.
+This is **development-only**. Other services in the inherited Compose configuration still use third-party images, and the authentication overlay applies to fresh MongoDB volumes only. Do not expose the default stack to the public internet or treat it as production-hardened.
+
+The optional administration panel is excluded from the default developer stack. To enable it in an isolated HTTPS-capable development setup, add `--profile admin` to your Compose command. Review its external image, exposed port, and deployment configuration separately before enabling it.
 
 Run the Omni Chat source identity checks with:
 

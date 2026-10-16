@@ -42,6 +42,12 @@ The non-production Compose override now requires a unique, explicit PostgreSQL/p
 
 The MCP transport redirect-limit boundary was hardened so an over-limit 307/308 throws instead of returning a redirect response a downstream client might follow. The local MCP security suite passed all 70 tests and the combined affected API test suite passed all 303 tests across five suites. The Tailwind typography test now invokes the real CSS compiler from an isolated Node process rather than attempting a process-wide loader inside Jest; the three typography tests passed locally. CI verification of the new exact head remains mandatory. The rendered accessibility test now checks a mock-configured login form in desktop light and mobile dark reduced-motion modes; it does not exercise authenticated sessions.
 
+## October 16 backend CI and development-stack hardening
+
+The previous full `api` shard 1/3 CI reached approximately 5.5 GiB of accumulated Jest worker heap and crashed while loading the agent trace-context suite, despite 2,396 passing assertions. The API Jest configuration now recycles **idle workers between suites** when heap usage passes 1024 MB in CI, preserving the two-worker minimum and unchanged local defaults. A representative local CI-mode rerun of shard 1/3 passed all **93 suites and 2,406 tests** (one pre-existing skipped test), including the formerly crashed suite. The exact patched GitHub head still requires CI verification.
+
+The GoreeCloud development Compose override also makes the inherited third-party administration panel **opt-in** via `--profile admin`, and enforces secure session cookies by default. This is defense-in-depth for local development, not a reviewed public deployment configuration; the panel's image, HTTPS endpoint, network exposure and credentials require separate review. Other inherited third-party services remain outside full production qualification.
+
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.
 - [x] Upstream MIT copyright obligations acknowledged.
