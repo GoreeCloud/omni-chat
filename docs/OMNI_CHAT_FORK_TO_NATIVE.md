@@ -74,6 +74,10 @@ The optional OpenTelemetry service name now defaults to `omni-chat` when not exp
 
 A local production audit identified KaTeX `0.16.47` as vulnerable to a trust-bypass advisory and found the old version explicitly retained by three root npm overrides. Those overrides now require patched KaTeX `^0.18.2`; the lockfile resolves `0.18.10` consistently for Markdown, Mermaid and math rendering. The local production audit fell from nine advisories to **three moderate, zero low, zero high and zero critical**. Frontend LaTeX, Mermaid and Markdown suites passed **49 tests**, shared API math/LaTeX suites passed **83 tests**, and the client production build completed. A new foundation contract checks the locked version and all three overrides against the advisory floor. This is a candidate upgrade across a pre-1.0 version boundary and requires exact-head GitHub CI and rendered browser validation before release acceptance. Remaining moderate advisories affecting the inherited Mammoth / argparse / sprintf-js document-conversion dependency chain are not waived by this change.
 
+## Glaze consumer smoke
+
+The scoped Omni Chat login now tests keyboard focus, reduced motion and theme identity at desktop and mobile sizes. Glaze Stable 1.7.0 inherits its V1.6 runtime; this test does not grant downstream acceptance or physical-device qualification.
+
 ## Qualification gates
 - [x] Source imported into authorized GoreeCloud fork with upstream lineage.
 - [x] Upstream MIT copyright obligations acknowledged.

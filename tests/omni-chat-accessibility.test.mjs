@@ -80,6 +80,26 @@ test('Omni Chat unauthenticated client accessibility smoke', { timeout: 90000 },
         true,
         mode.name + ' password input',
       );
+      // Verify the bounded Omni Chat presentation bridge in the rendered UI.
+      const rootStyle = await page.locator('html').evaluate((root) => ({
+        product: root.getAttribute('data-product'),
+        radius: getComputedStyle(root).getPropertyValue('--omni-radius').trim(),
+        scrollBehavior: getComputedStyle(root).scrollBehavior,
+      }));
+      assert.equal(rootStyle.product, 'omni-chat', mode.name);
+      assert.equal(Number.parseFloat(rootStyle.radius), 0.875, mode.name + ' scoped radius');
+      assert.ok(rootStyle.radius.endsWith('rem'), mode.name + ' radius unit');
+      assert.equal(rootStyle.scrollBehavior, 'auto', mode.name + ' reduced motion');
+      await page.keyboard.press('Tab');
+      await page.locator('#email').focus();
+      const focusStyle = await page.locator('#email').evaluate((input) => ({
+        visible: input.matches(':focus-visible'),
+        width: getComputedStyle(input).outlineWidth,
+        style: getComputedStyle(input).outlineStyle,
+      }));
+      assert.equal(focusStyle.visible, true, mode.name + ' keyboard focus');
+      assert.equal(focusStyle.width, '2px', mode.name + ' focus width');
+      assert.equal(focusStyle.style, 'solid', mode.name + ' focus style');
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
