@@ -60,7 +60,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm -i --network none -e OPENAI_API_KEY=sk-synthetic-no-network --entrypoint python goree-rag-noble:trial - <<'PY'
+          # The imported RAG config initializes PGVector eagerly. Supply an
+          # entirely disposable pgvector database on an internal-only network.
+          network=omni-rag-ci
+          db=omni-rag-synthetic-pg
+          docker network create --internal "$network"
+          trap 'docker rm -f "$db" >/dev/null 2>&1 || true; docker network rm "$network" >/dev/null 2>&1 || true' EXIT
+          docker run -d --name "$db" --network "$network" \
+            -e POSTGRES_DB=synthetic_db \
+            -e POSTGRES_USER=synthetic_user \
+            -e POSTGRES_PASSWORD=synthetic_password \
+            pgvector/pgvector:pg16 >/dev/null
+          ready=0
+          for i in $(seq 1 25); do
+            if docker exec "$db" pg_isready -U synthetic_user -d synthetic_db >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          docker run --rm -i --network "$network" \
+            -e OPENAI_API_KEY=sk-synthetic-no-external-egress \
+            -e DB_HOST="$db" \
+            -e POSTGRES_DB=synthetic_db \
+            -e POSTGRES_USER=synthetic_user \
+            -e POSTGRES_PASSWORD=synthetic_password \
+            --entrypoint python goree-rag-noble:trial - <<'PY'
           from lxml import etree
           from app.utils.document_loader import get_loader
           from main import app
