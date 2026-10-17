@@ -103,6 +103,36 @@ def stage(source: Path) -> None:
     if patched_config.count(schema_paths_before) != 1:
         raise ValueError("Unexpected upstream schema path extraction")
     patched_config = patched_config.replace(schema_paths_before, schema_paths_after)
+    # Complete the Zod 3/4 schema traversal and type inference used by all
+    # Admin configuration controls, not only indexed secret-preview paths.
+    for before, after, expected in (
+        ("return kind.startsWith('Zod') ? kind : `Zod${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;", "if (kind === 'pipe') return 'ZodPipeline';\n  if (kind === 'transform') return 'ZodEffects';\n  return kind.startsWith('Zod') ? kind : `Zod${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;", 1),
+        ("const INDEXED_ARRAY_RE = /^(.+)\\.(\\d+)$/;", "function schemaArrayElement(schema: t.ZodSchemaLike): t.ZodSchemaLike | undefined {\n  const item = schema as unknown as {\n    element?: t.ZodSchemaLike;\n    _def?: { element?: t.ZodSchemaLike; type?: t.ZodSchemaLike | string };\n  };\n  return item.element ?? item._def?.element ??\n    (typeof item._def?.type === 'object' ? item._def.type : undefined);\n}\n\nconst INDEXED_ARRAY_RE = /^(.+)\\.(\\d+)$/;", 1),
+        ("if (schema?._def?.typeName !== 'ZodIntersection') return null;", "if (schemaTypeName(schema) !== 'ZodIntersection') return null;", 1),
+        ("if (!schema?._def || schema._def.typeName !== 'ZodUnion') return false;", "if (schemaTypeName(schema) !== 'ZodUnion') return false;", 3),
+        ("unwrapped?._def?.typeName === 'ZodBoolean'", "schemaTypeName(unwrapped) === 'ZodBoolean'", 1),
+        ("const tn = schema._def.typeName;", "const tn = schemaTypeName(schema);", 1),
+        ("const optTn = opt?._def?.typeName;", "const optTn = schemaTypeName(opt);", 1),
+        ("while (innerSchema?._def?.typeName && WRAPPER_TYPES.has(innerSchema._def.typeName)) {", "while (schemaTypeName(innerSchema) && WRAPPER_TYPES.has(schemaTypeName(innerSchema)!)) {", 1),
+        ("if (def.typeName === 'ZodOptional' || def.typeName === 'ZodDefault') {", "if (schemaTypeName(innerSchema) === 'ZodOptional' || schemaTypeName(innerSchema) === 'ZodDefault') {", 1),
+        ("if (def.typeName === 'ZodNullable') {", "if (schemaTypeName(innerSchema) === 'ZodNullable') {", 1),
+        ("if (def.typeName === 'ZodLazy') {", "if (schemaTypeName(innerSchema) === 'ZodLazy') {", 1),
+        ("} else if (def.typeName === 'ZodPipeline') {", "} else if (schemaTypeName(innerSchema) === 'ZodPipeline') {", 1),
+        ("} else if (def.typeName === 'ZodEffects') {", "} else if (schemaTypeName(innerSchema) === 'ZodEffects') {", 1),
+        ("return schema._def?.typeName === 'ZodArray';", "return schemaTypeName(schema) === 'ZodArray';", 1),
+        ("const typeName = innerSchema._def.typeName;", "const typeName = schemaTypeName(innerSchema);", 1),
+        ("const elementType = innerSchema._def.type;", "const elementType = schemaArrayElement(innerSchema);", 1),
+        ("if (isArray && innerSchema?._def?.type) {", "if (isArray && schemaArrayElement(innerSchema)) {", 1),
+        ("let elementSchema: t.ZodSchemaLike = innerSchema._def.type;", "let elementSchema: t.ZodSchemaLike = schemaArrayElement(innerSchema)!;", 1),
+        ("const elementType = unwrapped._def.type;", "const elementType = schemaArrayElement(unwrapped);", 1),
+        ("const values = innerSchema._def?.values ?? [];", "const values = innerSchema._def?.values ?? (innerSchema._def as unknown as { entries?: Record<string, string> }).entries ?? [];", 1),
+        ("const raw = innerSchema._def?.values ?? {};", "const raw = innerSchema._def?.values ?? (innerSchema._def as unknown as { entries?: Record<string, string> }).entries ?? {};", 1),
+        ("if (current._def.typeName === 'ZodDefault') {", "if (schemaTypeName(current) === 'ZodDefault') {", 1),
+        ("current._def.typeName === 'ZodEffects' ? current._def.schema : current._def.innerType;", "schemaTypeName(current) === 'ZodEffects' ? current._def.schema : current._def.innerType;", 1),
+    ):
+        if patched_config.count(before) != expected:
+            raise ValueError(f"Unexpected upstream Admin type mapper: {before}")
+        patched_config = patched_config.replace(before, after)
     package.write_text(json.dumps(document, indent=2) + "\n")
     dockerfile.write_text(upgraded)
     config_file.write_text(patched_config)
