@@ -11,7 +11,7 @@ import sys
 UPSTREAM_SHA = "c4e5cbf79fcece1df9adfff5dfed983a5990ca9f"
 UPGRADES = {"PyJWT": ("2.13.0", "2.15.0"), "fastapi": ("0.115.12", "0.143.3")}
 STARLETTE = "1.8.0"
-TRANSITIVE_SECURITY_PINS = {"msgpack": "1.2.1", "setuptools": "80.10.2", "urllib3": "2.8.0"}
+TRANSITIVE_SECURITY_PINS = {"msgpack": "1.2.1", "setuptools": "83.0.0", "urllib3": "2.8.0"}
 
 DOCKERFILE = """FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
