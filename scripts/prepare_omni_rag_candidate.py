@@ -20,7 +20,7 @@ RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH" SCARF_NO_ANALYTICS=true
 WORKDIR /app
 COPY requirements.lite.txt .
-RUN pip install --no-cache-dir --upgrade pip==26.2.0 && pip install --no-cache-dir -r requirements.lite.txt && pip check
+RUN pip install --no-cache-dir --upgrade pip==26.2.0 && pip install --no-cache-dir -r requirements.lite.txt && pip check && python -m pip uninstall -y pip
 COPY . .
 CMD ["python","main.py"]
 """
