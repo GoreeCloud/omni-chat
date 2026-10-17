@@ -11,6 +11,7 @@ import sys
 UPSTREAM_SHA = "c4e5cbf79fcece1df9adfff5dfed983a5990ca9f"
 UPGRADES = {"PyJWT": ("2.13.0", "2.15.0"), "fastapi": ("0.115.12", "0.143.3")}
 STARLETTE = "1.8.0"
+TRANSITIVE_SECURITY_PINS = {"msgpack": "1.2.1", "setuptools": "80.10.2", "urllib3": "2.8.0"}
 
 DOCKERFILE = """FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
@@ -19,7 +20,7 @@ RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH" SCARF_NO_ANALYTICS=true
 WORKDIR /app
 COPY requirements.lite.txt .
-RUN pip install --no-cache-dir --upgrade pip==26.2.0 && pip install --no-cache-dir -r requirements.lite.txt
+RUN pip install --no-cache-dir --upgrade pip==26.2.0 && pip install --no-cache-dir -r requirements.lite.txt && pip check
 COPY . .
 CMD ["python","main.py"]
 """
@@ -56,6 +57,15 @@ def stage(source: Path) -> None:
         changed = changed.replace(before, f"{package}=={new}")
     fastapi_version = "fastapi==0.143.3"
     changed = changed.replace(fastapi_version, fastapi_version + "\nstarlette==" + STARLETTE)
+    # Pin patched transitive dependencies found in exact-head Trivy scan.
+    # Reject an upstream change before introducing potentially conflicting pins.
+    for package, version in TRANSITIVE_SECURITY_PINS.items():
+        if any(line.strip().lower().startswith(package + op)
+               for line in original.splitlines()
+               for op in ("==", ">=", "<=", "~=", ">", "<")):
+            raise ValueError(f"Unexpected existing RAG constraint: {package}")
+        changed += f"\n{package}=={version}"
+    changed += "\n"
 
     manifest = {
         "upstream_repository": "LibreChat-AI/rag-api",
@@ -67,6 +77,7 @@ def stage(source: Path) -> None:
             "PyJWT": UPGRADES["PyJWT"][1],
             "fastapi": UPGRADES["fastapi"][1],
             "starlette": STARLETTE,
+            **TRANSITIVE_SECURITY_PINS,
         },
         "qualification_only": True,
     }
