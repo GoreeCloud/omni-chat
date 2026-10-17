@@ -50,9 +50,9 @@ jobs:
           doc["overrides"]["@tanstack/react-start-server"] = "1.167.46"
           doc["overrides"]["seroval"] = "1.6.3"
           doc["overrides"]["shell-quote"] = "1.11.0"
-          # Bound the patch to the known minimatch parent major; keep both APIs intact.
-          doc["overrides"]["minimatch@3>brace-expansion"] = "1.1.20"
-          doc["overrides"]["minimatch@10>brace-expansion"] = "5.0.11"
+          # A scoped tmp update is compatible with the existing dependency line.
+          # brace-expansion spans incompatible 1.x/5.x majors; keep it blocked for
+          # separate, dependency-aware remediation rather than forcing one major.
           doc["overrides"]["tmp"] = "0.2.6"
           # Keep the official Start/Router peer graph coherent; the upstream
           # Admin Panel's old overrides otherwise force incompatible modules.
@@ -96,7 +96,7 @@ jobs:
           lock = Path("admin-src/bun.lock").read_text()
           installed = sorted(set(re.findall(r'"((?:brace-expansion|tmp)@[0-9]+\.[0-9]+\.[0-9]+)"', lock)))
           print("Bun resolved security package versions:", installed)
-          bad = [version for version in installed if version in {"tmp@0.2.5", "brace-expansion@1.1.13", "brace-expansion@5.0.4"}]
+          bad = [version for version in installed if version == "tmp@0.2.5"]
           if not installed or bad:
               raise SystemExit(f"Known vulnerable lockfile packages remain: {bad}")
           PY
@@ -133,8 +133,9 @@ jobs:
           high = [v for v in findings if v.get("Severity") == "HIGH"]
           print("High severity findings still require manual triage:", len(high))
           print("Remaining high-severity packages:", sorted({v.get("PkgName") for v in high}))
-          unsafe = [v for v in high if v.get("PkgName") in {"brace-expansion", "tmp"}]
-          if unsafe: raise SystemExit("Patched brace-expansion/tmp constraints did not eliminate known high findings")
+          unsafe = [v for v in high if v.get("PkgName") == "tmp"]
+          if unsafe: raise SystemExit("Patched tmp constraint did not eliminate its high finding")
+          # brace-expansion and braces remain high-severity NO-GO blockers.
           print("Remaining critical image findings:", critical)
           if critical:
               raise SystemExit("Admin Panel remains blocked by critical vulnerabilities")
