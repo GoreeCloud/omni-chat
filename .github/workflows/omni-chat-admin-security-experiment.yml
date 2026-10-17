@@ -89,13 +89,15 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json
+          import re
           from pathlib import Path
-          packages = json.loads(Path("admin-src/bun.lock").read_text()).get("packages", {})
-          relevant = {k: v[0] for k, v in packages.items() if isinstance(v, list) and v and isinstance(v[0], str) and (k == "tmp" or k.endswith("/tmp") or k == "brace-expansion" or k.endswith("/brace-expansion"))}
-          print("Resolved scoped dependency versions:", relevant)
-          bad = {k: v for k, v in relevant.items() if v.startswith("tmp@0.2.5") or v.startswith("brace-expansion@1.1.13") or v.startswith("brace-expansion@5.0.4")}
-          if not relevant or bad:
+          # bun.lock is JSONC, not strict JSON; inspect canonical package tokens
+          # without treating comments or trailing commas as parse errors.
+          lock = Path("admin-src/bun.lock").read_text()
+          installed = sorted(set(re.findall(r'"((?:brace-expansion|tmp)@[0-9]+\\.[0-9]+\\.[0-9]+)"', lock)))
+          print("Bun resolved security package versions:", installed)
+          bad = [version for version in installed if version in {"tmp@0.2.5", "brace-expansion@1.1.13", "brace-expansion@5.0.4"}]
+          if not installed or bad:
               raise SystemExit(f"Known vulnerable lockfile packages remain: {bad}")
           PY
       - name: Verify frontend builds with updated TanStack dependencies
