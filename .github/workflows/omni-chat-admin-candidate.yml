@@ -189,9 +189,10 @@ jobs:
           tar --create --gzip --file admin-modified-source.tar.gz \
             --exclude=.git --exclude=node_modules --exclude=.output \
             --directory=admin-src .
-          tar -tzf admin-modified-source.tar.gz | grep -Fxq './LICENSE'
-          tar -tzf admin-modified-source.tar.gz | grep -Fxq './Dockerfile'
-          tar -tzf admin-modified-source.tar.gz | grep -Fxq './src/server/config.ts'
+          tar -tzf admin-modified-source.tar.gz > "$RUNNER_TEMP/admin-archive-entries.txt"
+          grep -Fxq './LICENSE' "$RUNNER_TEMP/admin-archive-entries.txt"
+          grep -Fxq './Dockerfile' "$RUNNER_TEMP/admin-archive-entries.txt"
+          grep -Fxq './src/server/config.ts' "$RUNNER_TEMP/admin-archive-entries.txt"
           echo 'Modified AGPL source snapshot retained for compliance review'
       - name: Upload unpublished source snapshot
         if: always()
