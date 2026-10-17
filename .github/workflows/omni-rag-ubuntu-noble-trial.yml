@@ -122,6 +122,33 @@ jobs:
           critical_high=[x for x in v if x.get("Severity") in ("CRITICAL","HIGH")]
           if critical_high: raise SystemExit("Unresolved critical/high findings")
           PY
+      - name: Generate and validate CycloneDX RAG runtime inventory
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: goree-rag-noble:trial
+          format: cyclonedx
+          output: rag-candidate-sbom.cdx.json
+          scanners: vuln
+          exit-code: '0'
+      - name: Require nonempty software bill of materials
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("rag-candidate-sbom.cdx.json").read_text())
+          assert data.get("bomFormat") == "CycloneDX"
+          assert len(data.get("components") or []) > 0
+          print("RAG SBOM components:",len(data["components"]))
+          PY
+      - name: Save source inventory
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rag-ubuntu-noble-inventory
+          path: rag-candidate-sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Keep isolated scan result
         if: always()
         uses: actions/upload-artifact@v6
