@@ -137,6 +137,25 @@ describe('enable2FA', () => {
     expect(updateCall).not.toHaveProperty('backupCodes');
   });
 
+  it('encodes reserved email characters in the authenticator enrollment link', async () => {
+    const email = 'dev+qa&ops@example.com';
+    mockGetUserById.mockResolvedValue({ _id: 'user1', twoFactorEnabled: false, email });
+    mockUpdateUser.mockResolvedValue({ email });
+    const res = createRes();
+
+    await enable2FA({ user: { id: 'user1' }, body: {} }, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const { otpauthUrl } = res.json.mock.calls[0][0];
+    const url = new URL(otpauthUrl);
+    expect(url.protocol).toBe('otpauth:');
+    expect(url.hostname).toBe('totp');
+    expect(url.pathname).toContain('%26');
+    expect(decodeURIComponent(url.pathname)).toBe(`/${url.searchParams.get('issuer')}:${email}`);
+    expect(url.searchParams.get('secret')).toBe('NEWSECRET');
+    expect([...url.searchParams.keys()]).toEqual(['secret', 'issuer']);
+  });
+
   it('re-enrollment writes to pending fields, leaving live 2FA intact', async () => {
     const req = { user: { id: 'user1' }, body: { token: '123456' } };
     const res = createRes();

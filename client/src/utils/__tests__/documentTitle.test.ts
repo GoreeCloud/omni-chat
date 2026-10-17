@@ -45,30 +45,30 @@ describe('document title', () => {
     expect(hasRealTitle('New Chat')).toBe(false);
   });
 
-  it('uses the default app title when no app title is stored', () => {
+  it('uses the Omni Chat default when no app title is stored', () => {
     localStorage.removeItem(LocalStorageKeys.APP_TITLE);
 
     setDocumentTitle('', true);
 
-    expect(document.title).toBe('LibreChat');
+    expect(document.title).toBe('Omni Chat');
   });
 
-  it('uses the default app title when the stored app title is empty', () => {
+  it('uses the Omni Chat default when the stored app title is empty', () => {
     localStorage.setItem(LocalStorageKeys.APP_TITLE, '');
 
     setDocumentTitle('', true);
 
-    expect(document.title).toBe('LibreChat');
+    expect(document.title).toBe('Omni Chat');
   });
 
-  it('uses the default app title when storage is unavailable', () => {
+  it('uses the Omni Chat default when storage is unavailable', () => {
     jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('Storage unavailable');
     });
 
     setDocumentTitle('', true);
 
-    expect(document.title).toBe('LibreChat');
+    expect(document.title).toBe('Omni Chat');
   });
 
   it('defaults to enabled when the stored setting is malformed', () => {

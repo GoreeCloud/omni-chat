@@ -1,0 +1,14 @@
+/* Omni Chat identity bridge. Stable Glaze V1.7.0 is a bounded
+   presentation-only contract; full consumer qualification is pending.
+   Inherit the existing theme palette instead of hardcoding colors. */
+html[data-product='omni-chat'] {
+  --omni-radius: 0.875rem;
+}
+/* Use the existing theme-owned focus styles in style.css and the Tailwind
+   focus utilities. A product-scoped unlayered :focus-visible outline would
+   override theme colors, explicit ring-only controls, and role-based sizing. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-product='omni-chat'] {
+    scroll-behavior: auto;
+  }
+}

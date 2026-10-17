@@ -25,6 +25,10 @@ module.exports = {
   roots: ['<rootDir>'],
   coverageDirectory: 'coverage',
   maxWorkers,
+  // CI sharded suites can accumulate >5 GiB across files in a single worker.
+  // Recycle workers between test files once their heap crosses this threshold,
+  // instead of hiding the failure with higher runner limits or skipped tests.
+  workerIdleMemoryLimit: process.env.CI ? '1024MB' : undefined,
   testTimeout: 30000, // 30 seconds timeout for all tests
   setupFiles: ['./test/jestSetup.js', './test/__mocks__/logger.js'],
   moduleNameMapper: {

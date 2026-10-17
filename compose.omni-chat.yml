@@ -1,0 +1,52 @@
+# Development-only source build overlay (not production-qualified).
+# Requires NEW database volumes; existing MongoDB/PostgreSQL volumes need migration.
+services:
+  api:
+    container_name: omni-chat
+    image: goreecloud/omni-chat:development
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # The base Compose file publishes API publicly. Development only needs loopback.
+    ports: !override
+      - '127.0.0.1:${PORT:-3080}:${PORT:-3080}'
+    environment:
+      - APP_TITLE=Omni Chat
+      - HELP_AND_FAQ_URL=/
+      - MEILI_MASTER_KEY=${OMNI_MEILI_MASTER_KEY:?Set OMNI_MEILI_MASTER_KEY}
+      # Credential encoding happens in api/db/omniMongoUri.js, not YAML.
+      - MONGO_URI=mongodb://mongodb:27017/OmniChat?authSource=admin
+      - OMNI_MONGO_ROOT_USERNAME=${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}
+      - OMNI_MONGO_ROOT_PASSWORD=${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}
+  admin-panel:
+    # Opt in explicitly with --profile admin. The inherited image is still
+    # third-party and must not be part of the default development stack.
+    image: registry.librechat.ai/clickhouse/librechat-admin-panel@sha256:a395465d1daa3c11495810a8c224df86675985d50de42e98e36eeedbd8aecb94
+    profiles: [admin]
+    # Compose >=2.24.4: replace inherited public 0.0.0.0 port, do not
+    # accidentally append a second public port with normal merge semantics.
+    ports: !override
+      - '127.0.0.1:${ADMIN_PANEL_PORT:-3000}:3000'
+    environment:
+      SESSION_COOKIE_SECURE: 'true'
+  mongodb:
+    command: ['mongod', '--auth', '--bind_ip_all']
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${OMNI_MONGO_ROOT_USERNAME:?Set OMNI_MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${OMNI_MONGO_ROOT_PASSWORD:?Set OMNI_MONGO_ROOT_PASSWORD}
+  meilisearch:
+    environment:
+      # A blank inherited key would allow an unprotected local search service.
+      MEILI_MASTER_KEY: ${OMNI_MEILI_MASTER_KEY:?Set OMNI_MEILI_MASTER_KEY}
+  vectordb:
+    environment:
+      POSTGRES_DB: OmniChatVectors
+      POSTGRES_USER: omnic
+      POSTGRES_PASSWORD: ${OMNI_POSTGRES_PASSWORD:?Set OMNI_POSTGRES_PASSWORD}
+  rag_api:
+    # Pin the multi-platform OCI index instead of inheriting mutable :latest.
+    image: registry.librechat.ai/librechat-ai/librechat-rag-api-dev-lite@sha256:a62ce2221b43a9bb57fa6cb733e7047c80132960272c33d5704028f3071a1251
+    environment:
+      - POSTGRES_DB=OmniChatVectors
+      - POSTGRES_USER=omnic
+      - POSTGRES_PASSWORD=${OMNI_POSTGRES_PASSWORD:?Set OMNI_POSTGRES_PASSWORD}

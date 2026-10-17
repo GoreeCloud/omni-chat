@@ -56,10 +56,14 @@ describe('createReaper', () => {
 
   test('escalates to SIGKILL when the tree ignores SIGTERM', async () => {
     const pidFile = path.join(base, 'stubborn.pid');
-    const child = run(`trap '' TERM; echo $$ > "${pidFile}"; sleep 30`);
+    // Keep bash as the wait-owning root: an optimized final foreground
+    // `sleep` can replace bash and make SIGTERM behavior platform-dependent.
+    const child = run(`trap '' TERM; echo $$ > "${pidFile}"; sleep 30 & wait`);
     await waitFor(() => fs.existsSync(pidFile));
     const rootPid = Number((await fs.promises.readFile(pidFile, 'utf8')).trim());
-    createReaper(child, 200).reap();
+    // Leave a full scheduler turn for the SIGTERM-only assertion under CI
+    // contention; the forced-kill path is still required for completion.
+    createReaper(child, 750).reap();
     /** SIGTERM alone leaves the trap-protected root running. */
     expect(isGone(rootPid)).toBe(false);
     await waitFor(() => isGone(rootPid));

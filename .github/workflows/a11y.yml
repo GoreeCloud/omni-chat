@@ -1,35 +1,35 @@
-name: Lint for accessibility issues
-
+name: Omni Chat accessibility checks
 on:
   pull_request:
     paths:
       - 'client/src/**'
-      - '!**.md'
+      - 'client/index.html'
+      - 'client/vite.config.ts'
+      - 'client/public/assets/**'
+      - 'tests/omni-chat-accessibility.test.mjs'
+      - '.github/workflows/a11y.yml'
   workflow_dispatch:
-    inputs:
-      run_workflow:
-        description: 'Set to true to run this workflow'
-        required: true
-        default: 'false'
-
 permissions:
   contents: read
-  pull-requests: write
-
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: omni-a11y-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-
 jobs:
-  axe-linter:
+  axe-open-source:
     runs-on: ubuntu-latest
-    if: >
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_workflow == 'true')
-    
     steps:
-      - uses: actions/checkout@v5
-      - uses: dequelabs/axe-linter-action@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          api_key: ${{ secrets.AXE_LINTER_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Lint changed UI and interaction surfaces
+        run: npx eslint client/src/components/Auth/AuthLayout.tsx client/src/hooks/MCP/useAppBridge.ts
+      - name: Build production frontend for real rendered page
+        run: npm run frontend
+      - name: Install isolated headless browser
+        run: npx playwright install --with-deps chromium --only-shell
+      - name: Check rendered unauthenticated UI with open-source axe-core
+        run: node --test tests/omni-chat-accessibility.test.mjs

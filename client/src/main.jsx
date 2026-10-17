@@ -6,6 +6,7 @@ import App from './App';
 import '@librechat/client/style.css';
 import './style.css';
 import './mobile.css';
+import './omni-chat.css';
 import { ApiErrorBoundaryProvider } from './hooks/ApiErrorBoundaryContext';
 import { clearTTSCache } from './utils/ttscache';
 import 'katex/dist/katex.min.css';

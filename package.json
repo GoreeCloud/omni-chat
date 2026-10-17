@@ -1,5 +1,5 @@
 {
-  "name": "LibreChat",
+  "name": "@goreecloud/omni-chat",
   "version": "v0.8.8",
   "description": "",
   "packageManager": "npm@11.13.0",
@@ -243,13 +243,16 @@
     "mdast-util-gfm": {
       "mdast-util-gfm-autolink-literal": "2.0.0"
     },
-    "katex": "^0.16.21",
+    "mammoth": {
+      "argparse": "^2.0.1"
+    },
+    "katex": "^0.18.2",
     "rehype-katex": {
-      "katex": "^0.16.21"
+      "katex": "^0.18.2"
     },
     "remark-math": {
       "micromark-extension-math": {
-        "katex": "^0.16.21"
+        "katex": "^0.18.2"
       }
     },
     "eslint": {

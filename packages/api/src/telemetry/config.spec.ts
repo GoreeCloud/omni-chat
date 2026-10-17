@@ -9,7 +9,7 @@ describe('getTelemetryConfig', () => {
     expect(config.logsEnabled).toBe(false);
     expect(config.logsLevel).toBe('info');
     expect(config.sdkDisabled).toBe(false);
-    expect(config.serviceName).toBe('librechat');
+    expect(config.serviceName).toBe('omni-chat');
     expect(config.healthPath).toBe('/health');
     expect(config.ioredisTracingEnabled).toBe(false);
   });

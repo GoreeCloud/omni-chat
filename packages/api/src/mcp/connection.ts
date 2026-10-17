@@ -1537,10 +1537,17 @@ export class MCPConnection extends EventEmitter {
           operationLimits: appOperationLimits,
         };
 
+        // A redirect beyond this bound is rejected before the SDK sees it.
+        // Returning a live 307/308 response lets downstream clients follow it
+        // independently, bypassing this wrapper's depth and SSRF checks.
+        if (isMethodPreservingRedirect && redirects >= MAX_REDIRECTS) {
+          await response.body?.cancel().catch(() => undefined);
+          throw new Error('MCP redirect limit exceeded');
+        }
+
         // A redirected tool request is another dispatch, not proof the first was inert.
         if (
           !isMethodPreservingRedirect ||
-          redirects >= MAX_REDIRECTS ||
           (reauthorize && containsToolInvocation(currentInit.body))
         ) {
           return guardStreamableHTTPResponses

@@ -10,7 +10,7 @@ const {
 } = require('~/server/services/twoFactorService');
 const { getUserById, updateUser } = require('~/models');
 
-const safeAppTitle = (process.env.APP_TITLE || 'LibreChat').replace(/\s+/g, '');
+const safeAppTitle = (process.env.APP_TITLE || 'Omni Chat').replace(/\s+/g, '');
 
 /**
  * Enable 2FA for the user by generating a new TOTP secret and backup codes.
@@ -53,7 +53,10 @@ const enable2FA = async (req, res) => {
     );
 
     const email = user.email || (existingUser && existingUser.email) || '';
-    const otpauthUrl = `otpauth://totp/${safeAppTitle}:${email}?secret=${secret}&issuer=${safeAppTitle}`;
+    // Encode the label components separately so the issuer/account separator
+    // remains valid while reserved characters in an email cannot alter the URL.
+    const label = `${encodeURIComponent(safeAppTitle)}:${encodeURIComponent(email)}`;
+    const otpauthUrl = `otpauth://totp/${label}?secret=${encodeURIComponent(secret)}&issuer=${encodeURIComponent(safeAppTitle)}`;
 
     return res.status(200).json({ otpauthUrl, backupCodes: plainCodes });
   } catch (err) {

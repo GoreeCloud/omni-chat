@@ -95,9 +95,9 @@ test('PR selection and fail-open defaults use six memory shards and two Redis tr
 
 test('nightly and default manual runs retain full-suite coverage on both stores', () => {
   assert.equal(workflow.on.workflow_dispatch.inputs.coverage.default, 'full');
-  assert.equal(defaults[1].include.length, 4);
-  assertPartition(defaults[1], 'memory', 'full', 2);
-  assertPartition(defaults[1], 'redis', 'full', 2);
+  assert.equal(defaults[1].include.length, 14);
+  assertPartition(defaults[1], 'memory', 'full', 6);
+  assertPartition(defaults[1], 'redis', 'full', 8);
 });
 
 test('PR and nightly matrices preserve both registered-email change modes on one memory shard', () => {
@@ -140,6 +140,7 @@ test('both suite commands consume the matrix shard without increasing worker con
   );
   assert.match(config, /workers: 1,/);
   assert.equal(shards['runs-on'], 'ubuntu-latest');
+  assert.ok(shards['timeout-minutes'] >= 45, 'full memory shard and extra email/title checks need 45 minutes');
 });
 
 test('an explicit Redis skip drops both transport shards and no memory shard', (t) => {

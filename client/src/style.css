@@ -1616,6 +1616,30 @@ html {
   }
 }
 
+.webkit-dark-styles,
+.webkit-dark-styles:focus {
+  background-clip: content-box;
+  -webkit-box-shadow: 0 0 0 50vh rgb(var(--field-fill, var(--surface-primary))) inset;
+}
+
+.dark .webkit-dark-styles,
+.dark .webkit-dark-styles:focus {
+  -webkit-text-fill-color: rgb(var(--field-text, var(--text-primary)));
+  background-clip: content-box;
+  -webkit-box-shadow: 0 0 0 50vh rgb(var(--field-fill, var(--surface-primary))) inset;
+}
+
+/* The autofill background's inset shadow must not replace the shared
+ * lc-field's theme-owned Tailwind focus ring. Keep the inset paint, but
+ * compose the focus ring outside it for keyboard users only. No explicit
+ * color/width override: the theme's focus-visible ring utilities own both. */
+html:not([data-input-modality='pointer']) .webkit-dark-styles.lc-field:focus-visible {
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 transparent),
+    var(--tw-ring-shadow, 0 0 transparent),
+    0 0 0 50vh rgb(var(--field-fill, var(--surface-primary))) inset;
+}
+
 /* Ordered Listing */
 .prose :where(ol[type='A']):not(:where([class~='not-prose'] *)) {
   list-style-type: upper-alpha;

@@ -1,0 +1,100 @@
+name: Omni Chat foundation validation
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/omni-chat-native-foundation
+permissions:
+  contents: read
+jobs:
+  identity-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Omni Chat identity contract
+        run: node --test tests/omni-chat-identity.test.mjs tests/omni-chat-brand-icon.test.mjs tests/omni-chat-ci-capacity.test.mjs tests/omni-chat-upstream.test.mjs tests/omni-chat-telemetry-privacy.test.mjs tests/omni-chat-math-security.test.mjs tests/omni-chat-document-security.test.mjs
+  production-dependency-advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Block moderate and higher production advisories
+        run: npm audit --omit=dev --audit-level=moderate --no-fund
+  composed-development-credentials:
+    runs-on: ubuntu-latest
+    env:
+      UID: '1000'
+      GID: '1000'
+      OMNI_MONGO_ROOT_USERNAME: 'omnicitest'
+      OMNI_MONGO_ROOT_PASSWORD: 'synthetic_mongo_ci_2026'
+      OMNI_POSTGRES_PASSWORD: 'synthetic_pg_ci_2026'
+      OMNI_MEILI_MASTER_KEY: 'synthetic_search_ci_key_2026_42'
+      ADMIN_PANEL_SESSION_SECRET: 'synthetic_ci_admin_session_not_a_real_secret_2026'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare synthetic configuration
+        run: cp .env.example .env
+      - name: Generate effective Compose configuration
+        run: docker compose -f docker-compose.yml -f compose.omni-chat.yml config --format json > "$RUNNER_TEMP/omni-chat-compose.json"
+      - name: Resolve explicitly enabled administration profile
+        run: docker compose -f docker-compose.yml -f compose.omni-chat.yml --profile admin config --format json > "$RUNNER_TEMP/omni-chat-admin-compose.json"
+      - name: Validate default and opt-in service configuration
+        run: node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json" "$RUNNER_TEMP/omni-chat-admin-compose.json"
+      - name: Verify actual production and local Admin cookie configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f deploy-compose.yml config --format json > "$RUNNER_TEMP/omni-prod-cookie.json"
+          env ADMIN_PANEL_SESSION_COOKIE_SECURE=false docker compose -f deploy-compose.yml config --format json > "$RUNNER_TEMP/omni-prod-cookie-override.json"
+          docker compose -f docker-compose.yml config --format json > "$RUNNER_TEMP/omni-local-cookie.json"
+          node - "$RUNNER_TEMP" <<'JS'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const directory = process.argv[2];
+          const environment = (file) => JSON.parse(
+            fs.readFileSync(path.join(directory, file), 'utf8')
+          ).services['admin-panel'].environment;
+          const production = environment('omni-prod-cookie.json');
+          const override = environment('omni-prod-cookie-override.json');
+          const development = environment('omni-local-cookie.json');
+          if (production.SESSION_COOKIE_SECURE !== 'true') throw Error('Production Admin cookie must require HTTPS');
+          if (override.SESSION_COOKIE_SECURE !== 'false') throw Error('Local-only override not applied');
+          if (development.SESSION_COOKIE_SECURE !== 'false') throw Error('Development HTTP default changed');
+          console.log('Effective Admin cookie Compose defaults and override verified');
+          JS
+      - name: Reject missing admin profile session secret
+        shell: bash
+        run: |
+          env ADMIN_PANEL_SESSION_SECRET='' docker compose -f docker-compose.yml -f compose.omni-chat.yml --profile admin config --format json > "$RUNNER_TEMP/omni-admin-empty-secret.json"
+          if node scripts/verify_omni_compose.mjs "$RUNNER_TEMP/omni-chat-compose.json" "$RUNNER_TEMP/omni-admin-empty-secret.json" > "$RUNNER_TEMP/omni-admin-secret-error.log" 2>&1; then
+            echo '::error title=Admin security::Empty admin session secret accepted'
+            exit 1
+          fi
+          grep -Fq 'opt-in admin profile must have a 32+ character session secret' "$RUNNER_TEMP/omni-admin-secret-error.log"
+      - name: Reject missing database credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in OMNI_MONGO_ROOT_USERNAME OMNI_MONGO_ROOT_PASSWORD OMNI_POSTGRES_PASSWORD OMNI_MEILI_MASTER_KEY; do
+            if env "$key=" docker compose -f docker-compose.yml -f compose.omni-chat.yml config --quiet > "$RUNNER_TEMP/omni-missing-credential.log" 2>&1; then
+              echo "::error title=Credential bypass::$key must reject an empty value"
+              exit 1
+            fi
+            if ! grep -Fq "$key" "$RUNNER_TEMP/omni-missing-credential.log"; then
+              echo "::error title=Credential validation::$key did not produce a specific error"
+              exit 1
+            fi
+            echo "Required setting $key rejects empty values"
+          done
+  synthetic-recovery-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify disposable MongoDB and pgvector backup/restore
+        env:
+          OMNI_SYNTHETIC_RECOVERY: '1'
+        run: bash scripts/verify_omni_recovery.sh

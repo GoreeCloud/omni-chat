@@ -1,0 +1,37 @@
+name: Omni Chat upstream status
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch upstream main history without modifying fork
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --filter=blob:none https://github.com/LibreChat-AI/LibreChat.git \
+            +refs/heads/main:refs/remotes/upstream/main
+      - name: Report actionable upstream-only commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream_sha="$(git rev-parse refs/remotes/upstream/main)"
+          local_sha="$(git rev-parse HEAD)"
+          {
+            echo '## Omni Chat upstream maintenance'
+            echo "- Upstream main: \`$upstream_sha\`"
+            echo "- GoreeCloud checkout: \`$local_sha\`"
+            echo ''
+            echo '```text'
+            bash scripts/omni-chat-upstream-divergence.sh HEAD refs/remotes/upstream/main
+            echo '```'
+            echo 'This check does not automatically import, merge, or deploy upstream code.'
+          } >> "$GITHUB_STEP_SUMMARY"

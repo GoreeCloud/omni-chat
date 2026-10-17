@@ -3,7 +3,8 @@ const { optionalEnabled, instrumentMongooseQueryMetrics } = require('@librechat/
 const { logger } = require('@librechat/data-schemas');
 
 const mongoose = require('mongoose');
-const MONGO_URI = process.env.MONGO_URI;
+const { resolveMongoUri } = require('./omniMongoUri');
+const MONGO_URI = resolveMongoUri(process.env);
 
 instrumentMongooseQueryMetrics(mongoose);
 

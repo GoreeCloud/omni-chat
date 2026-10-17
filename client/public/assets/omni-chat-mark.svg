@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="omni-title omni-description">
+  <title id="omni-title">Omni Chat AI assistant</title>
+  <desc id="omni-description">A luminous AI agent with an antenna, headphones, and a friendly digital face.</desc>
+  <defs>
+    <linearGradient id="omni-canvas" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111b3b"/>
+      <stop offset="1" stop-color="#17102f"/>
+    </linearGradient>
+    <linearGradient id="omni-shell" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9b75ff"/>
+      <stop offset=".52" stop-color="#6c7dff"/>
+      <stop offset="1" stop-color="#39dedc"/>
+    </linearGradient>
+    <linearGradient id="omni-visor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101944"/>
+      <stop offset="1" stop-color="#070d22"/>
+    </linearGradient>
+    <radialGradient id="omni-aura">
+      <stop offset="0" stop-color="#655dff" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#655dff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="7" y="7" width="242" height="242" rx="58" fill="url(#omni-canvas)"/>
+  <circle cx="128" cy="137" r="108" fill="url(#omni-aura)"/>
+  <circle cx="128" cy="50" r="11" fill="#dbffff" stroke="#57dce8" stroke-width="3"/>
+  <path d="M128 61v20" stroke="url(#omni-shell)" stroke-width="9" stroke-linecap="round"/>
+  <rect x="111" y="72" width="34" height="17" rx="8.5" fill="#5dcbec" stroke="#b6baff" stroke-width="3"/>
+  <rect x="45" y="116" width="30" height="70" rx="15" fill="#5558d7" stroke="#8b8eff" stroke-width="5"/>
+  <rect x="181" y="116" width="30" height="70" rx="15" fill="#5558d7" stroke="#8b8eff" stroke-width="5"/>
+  <rect x="60" y="82" width="136" height="132" rx="55" fill="url(#omni-shell)" stroke="#bdc8ff" stroke-width="3"/>
+  <path d="M88 95c21-16 60-19 85 0" fill="none" stroke="#e5e7ff" stroke-width="5" stroke-linecap="round" opacity=".66"/>
+  <rect id="omni-agent-face" x="76" y="108" width="104" height="85" rx="32" fill="url(#omni-visor)" stroke="#3ad5ed" stroke-width="4"/>
+  <rect x="98" y="137" width="13" height="30" rx="6.5" fill="#8efaff"/>
+  <rect x="145" y="137" width="13" height="30" rx="6.5" fill="#8efaff"/>
+  <path d="M119 172q9 8 18 0" stroke="#9afaff" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M64 186q10 14 24 20M192 186q-10 14-24 20" stroke="#58e6f7" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>
+  <circle cx="50" cy="69" r="2.5" fill="#82faf2"/>
+  <path d="M209 65v15m-7.5-7.5h15" stroke="#7fdff9" stroke-width="3" stroke-linecap="round"/>
+</svg>

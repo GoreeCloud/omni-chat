@@ -1,4 +1,4 @@
-const DEFAULT_SERVICE_NAME = 'librechat';
+const DEFAULT_SERVICE_NAME = 'omni-chat';
 export const DEFAULT_HEALTH_PATH = '/health';
 export const DEFAULT_LOGS_LEVEL = 'info';
 
