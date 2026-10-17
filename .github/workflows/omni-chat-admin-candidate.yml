@@ -1,0 +1,214 @@
+name: Omni Chat Admin image qualification
+
+on:
+  push:
+    branches: [feature/omni-admin-image-qualification-20261016]
+  pull_request:
+    branches: [integrate/omni-chat-dev-20261016]
+
+permissions:
+  contents: read
+
+jobs:
+  image-candidate:
+    name: Admin trial ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            machine: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            machine: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          path: omni-src
+      - uses: actions/checkout@v5
+        with:
+          repository: LibreChat-AI/admin-panel
+          ref: 82fb4b61409d5c2e6eceb3d116b89bc957c1620e
+          persist-credentials: false
+          path: admin-src
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Validate pinned checkout and rejected inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "${{ matrix.machine }}"
+          python3 -m unittest discover -s omni-src/tests -p test_omni_admin_candidate.py -v
+          touch admin-src/.unexpected-untracked
+          if python3 omni-src/scripts/prepare_omni_admin_candidate.py admin-src > /tmp/dirty-output.txt 2>&1; then
+            echo 'Dirty checkout was accepted' >&2
+            exit 1
+          fi
+          grep -Fq 'Refusing to modify a dirty upstream checkout' /tmp/dirty-output.txt
+          rm admin-src/.unexpected-untracked
+          python3 omni-src/scripts/prepare_omni_admin_candidate.py admin-src
+      - name: Resolve and compile pinned trial source
+        working-directory: admin-src
+        run: |
+          bun install
+          bun run build
+      - name: Inspect pinned schema metadata for indexed config overrides
+        working-directory: admin-src
+        run: |
+          bun -e '
+          import {configSchema} from "librechat-data-provider";
+          const root = configSchema;
+          const endpoints = root?.shape?.endpoints;
+          const unwrap = x => x?._def?.innerType ?? x;
+          const custom = unwrap(endpoints)?.shape?.custom;
+          const describe = x => ({
+            hasShape: !!x?.shape,
+            typeName: x?._def?.typeName ?? null,
+            type: typeof x?._def?.type === "string" ? x._def.type : null,
+            innerTypeName: x?._def?.innerType?._def?.typeName ?? null,
+            innerTypeType: typeof x?._def?.innerType?._def?.type === "string" ? x._def.innerType._def.type : null
+          });
+          console.log("Schema metadata:", JSON.stringify({
+            root:describe(root),endpoints:describe(endpoints),custom:describe(custom)
+          }));
+          '
+      - name: Verify pinned Admin auth and session regression suite
+        working-directory: admin-src
+        run: |
+          bun run test src/server/auth.oauth.test.ts src/server/session.test.ts src/server/scopes.test.ts src/server/capabilities.test.ts
+      - name: Verify complete Admin Panel unit and component suite
+        working-directory: admin-src
+        run: bun run test
+      - name: Verify upstream AGPL license is retained
+        shell: bash
+        run: |
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' admin-src/LICENSE
+          test "$(git -C admin-src rev-parse HEAD)" = 82fb4b61409d5c2e6eceb3d116b89bc957c1620e
+          echo 'Exact upstream source and AGPL license verified in disposable trial'
+      - name: Build and check native runtime
+        run: |
+          set -euo pipefail
+          docker build -f admin-src/Dockerfile -t omni-admin-candidate:trial admin-src
+          test "$(docker image inspect --format '{{.Architecture}}' omni-admin-candidate:trial)" = "${{ matrix.arch }}"
+          docker run --rm --entrypoint bun omni-admin-candidate:trial -e '
+            import {existsSync} from "node:fs";
+            for (const p of ["eslint", "patch-package", "@eslint/eslintrc"]) {
+              if (existsSync("/app/node_modules/" + p)) throw new Error("Development package leaked: " + p);
+            }
+            for (const p of ["react", "@tanstack/react-start"]) {
+              if (!existsSync("/app/node_modules/" + p)) throw new Error("Runtime package missing: " + p);
+            }
+          '
+      - name: Verify startup rejects missing credentials and synthetic health responds
+        shell: bash
+        run: |
+          set -euo pipefail
+          image=omni-admin-candidate:trial
+          # No live backend or real user data is connected to the trial.
+          if docker run --rm --network none "$image" >/dev/null 2>&1; then
+            echo "Admin unexpectedly started without SESSION_SECRET" >&2
+            exit 1
+          fi
+          cid=$(docker run --detach --rm --network bridge \
+            -e SESSION_SECRET=0123456789abcdef0123456789abcdef \
+            -e API_SERVER_URL=http://127.0.0.1:3080 \
+            -e VITE_API_BASE_URL=http://127.0.0.1:3080 "$image")
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          ok=0
+          for attempt in $(seq 1 20); do
+            if docker exec "$cid" bun -e '
+              const response = await fetch("http://127.0.0.1:3000/health");
+              if (response.status !== 200 || (await response.text()) !== "ok") process.exit(1);
+            ' >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ok" -ne 1 ]; then
+            docker logs "$cid" --tail 70
+            echo "Synthetic Admin health check failed" >&2
+            exit 1
+          fi
+          echo "Synthetic Admin startup and health qualified on native ${{ matrix.arch }}"
+      - name: Scan unpublished trial image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: omni-admin-candidate:trial
+          format: json
+          output: admin-candidate-trivy.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          ignore-unfixed: false
+          exit-code: '0'
+      - name: Fail closed on critical or high findings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          report = json.loads(Path("admin-candidate-trivy.json").read_text())
+          results = report.get("Results") or []
+          if not results:
+              raise SystemExit("No scan results")
+          findings = [v for r in results for v in (r.get("Vulnerabilities") or [])]
+          severe = [v for v in findings if v.get("Severity") in ("CRITICAL", "HIGH")]
+          print("Critical/high findings:", len(severe))
+          if severe:
+              raise SystemExit("Admin trial image did not qualify")
+          PY
+      - name: Generate CycloneDX dependency inventory
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: omni-admin-candidate:trial
+          format: cyclonedx
+          output: admin-candidate-sbom.cdx.json
+          scanners: vuln
+          exit-code: '0'
+      - name: Validate non-empty CycloneDX inventory
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          bom=json.loads(Path("admin-candidate-sbom.cdx.json").read_text())
+          if bom.get("bomFormat")!="CycloneDX" or not bom.get("components"):
+              raise SystemExit("Missing/empty CycloneDX software inventory")
+          print("SBOM component count:",len(bom["components"]))
+          PY
+      - name: Retain modified upstream AGPL source for release audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C admin-src rev-parse HEAD)" = 82fb4b61409d5c2e6eceb3d116b89bc957c1620e
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' admin-src/LICENSE
+          test -s admin-src/bun.lock
+          tar --create --gzip --file admin-modified-source.tar.gz \
+            --exclude=.git --exclude=node_modules --exclude=.output \
+            --directory=admin-src .
+          tar -tzf admin-modified-source.tar.gz > "$RUNNER_TEMP/admin-archive-entries.txt"
+          grep -Fxq './LICENSE' "$RUNNER_TEMP/admin-archive-entries.txt"
+          grep -Fxq './Dockerfile' "$RUNNER_TEMP/admin-archive-entries.txt"
+          grep -Fxq './src/server/config.ts' "$RUNNER_TEMP/admin-archive-entries.txt"
+          echo 'Modified AGPL source snapshot retained for compliance review'
+      - name: Upload unpublished source snapshot
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: omni-admin-agpl-source-${{ matrix.arch }}
+          path: admin-modified-source.tar.gz
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Preserve scan evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: omni-admin-image-${{ matrix.arch }}-trial
+          path: |
+            admin-candidate-trivy.json
+            admin-candidate-sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 7
