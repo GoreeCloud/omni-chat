@@ -100,6 +100,15 @@ jobs:
           other, known, ext = get_loader("example.txt", "text/plain", "/tmp/synthetic.txt")
           assert type(other).__name__ == "TextLoader" and known
           print("Pinned app import and XML MIME/extension routes verified")
+          import os
+          from fastapi.testclient import TestClient
+          client = TestClient(app)
+          os.environ.pop("JWT_SECRET", None)
+          assert client.get("/ids").status_code == 503, "Missing JWT secret must fail closed"
+          os.environ["JWT_SECRET"] = "synthetic-only-jwt-secret"
+          assert client.get("/ids").status_code == 401, "Missing bearer token must be denied"
+          assert client.get("/ids", headers={"Authorization": "Bearer invalid"}).status_code == 401
+          print("Synthetic missing-secret and invalid-token paths rejected")
           PY
       - name: Scan unpublished Ubuntu candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
