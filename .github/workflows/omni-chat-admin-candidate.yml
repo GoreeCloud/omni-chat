@@ -57,6 +57,26 @@ jobs:
         run: |
           bun install
           bun run build
+      - name: Inspect pinned schema metadata for indexed config overrides
+        working-directory: admin-src
+        run: |
+          bun -e '
+          import {configSchema} from "librechat-data-provider";
+          const root = configSchema;
+          const endpoints = root?.shape?.endpoints;
+          const unwrap = x => x?._def?.innerType ?? x;
+          const custom = unwrap(endpoints)?.shape?.custom;
+          const describe = x => ({
+            hasShape: !!x?.shape,
+            typeName: x?._def?.typeName ?? null,
+            type: typeof x?._def?.type === "string" ? x._def.type : null,
+            innerTypeName: x?._def?.innerType?._def?.typeName ?? null,
+            innerTypeType: typeof x?._def?.innerType?._def?.type === "string" ? x._def.innerType._def.type : null
+          });
+          console.log("Schema metadata:", JSON.stringify({
+            root:describe(root),endpoints:describe(endpoints),custom:describe(custom)
+          }));
+          '
       - name: Verify pinned Admin auth and session regression suite
         working-directory: admin-src
         run: |
