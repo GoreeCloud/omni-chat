@@ -120,3 +120,19 @@ test('development override selects local source and does not use upstream API im
   assert.match(file('.github/workflows/omni-chat-validation.yml'), /verify_omni_compose\.mjs/);
   assert.match(file('packages/api/src/telemetry/config.ts'), /DEFAULT_SERVICE_NAME = 'omni-chat'/);
 });
+
+test('production Admin cookies default Secure without breaking local development', () => {
+  const production = file('deploy-compose.yml');
+  const development = file('docker-compose.yml');
+  assert.ok(
+    production.includes('SESSION_COOKIE_SECURE=${ADMIN_PANEL_SESSION_COOKIE_SECURE:-true}'),
+    'production Admin session cookie default must be secure',
+  );
+  assert.ok(
+    development.includes('SESSION_COOKIE_SECURE=${ADMIN_PANEL_SESSION_COOKIE_SECURE:-false}'),
+    'the existing local development HTTP default must remain available',
+  );
+  const example = file('.env.example');
+  assert.match(example, /ADMIN_PANEL_SESSION_COOKIE_SECURE=true/);
+  assert.match(example, /Use HTTPS in production/);
+});
