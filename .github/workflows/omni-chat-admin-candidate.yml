@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/omni-admin-image-qualification-20261016]
   pull_request:
-    branches: [integrate/omni-chat-dev-20261016]
+    branches: [integrate/omni-chat-dev-20261016, dev]
 
 permissions:
   contents: read
@@ -44,6 +44,7 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = "${{ matrix.machine }}"
           python3 -m unittest discover -s omni-src/tests -p test_omni_admin_candidate.py -v
+          python3 -m unittest discover -s omni-src/tests -p test_omni_admin_archive_hygiene.py -v
           touch admin-src/.unexpected-untracked
           if python3 omni-src/scripts/prepare_omni_admin_candidate.py admin-src > /tmp/dirty-output.txt 2>&1; then
             echo 'Dirty checkout was accepted' >&2
@@ -188,11 +189,15 @@ jobs:
           test -s admin-src/bun.lock
           tar --create --gzip --file admin-modified-source.tar.gz \
             --exclude=.git --exclude=node_modules --exclude=.output \
+            --exclude=logs --exclude=dist --exclude=.tanstack \
+            --exclude=coverage --exclude=.env --exclude='.env.*' \
             --directory=admin-src .
           tar -tzf admin-modified-source.tar.gz > "$RUNNER_TEMP/admin-archive-entries.txt"
           grep -Fxq './LICENSE' "$RUNNER_TEMP/admin-archive-entries.txt"
           grep -Fxq './Dockerfile' "$RUNNER_TEMP/admin-archive-entries.txt"
           grep -Fxq './src/server/config.ts' "$RUNNER_TEMP/admin-archive-entries.txt"
+          grep -Fxq './bun.lock' "$RUNNER_TEMP/admin-archive-entries.txt"
+          ! grep -Fq './logs/' "$RUNNER_TEMP/admin-archive-entries.txt"
           echo 'Modified AGPL source snapshot retained for compliance review'
       - name: Upload unpublished source snapshot
         if: always()
