@@ -1,0 +1,232 @@
+name: RAG pinned-source Ubuntu 24.04 security trial
+on:
+  push:
+    branches: [feature/omni-rag-xml-failclosed-20261016]
+permissions:
+  contents: read
+jobs:
+  ubuntu-rag-trial:
+    name: RAG native ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            machine: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            machine: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          path: goree-src
+      - uses: actions/checkout@v5
+        with:
+          repository: LibreChat-AI/rag-api
+          ref: c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
+          persist-credentials: false
+          path: rag-src
+      - name: Verify pinned-source guard and stage source candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s goree-src/tests -p test_omni_rag_candidate.py -v
+          touch rag-src/.unexpected-untracked
+          if python3 goree-src/scripts/prepare_omni_rag_candidate.py rag-src > "$RUNNER_TEMP/rag-dirty.log" 2>&1; then
+            echo 'RAG candidate accepted dirty source' >&2
+            exit 1
+          fi
+          grep -Fq 'Refusing a dirty pinned RAG checkout' "$RUNNER_TEMP/rag-dirty.log"
+          rm rag-src/.unexpected-untracked
+          python3 goree-src/scripts/prepare_omni_rag_candidate.py rag-src
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("rag-src/goree-rag-candidate.json").read_text())
+          assert d["upstream_sha"]=="c4e5cbf79fcece1df9adfff5dfed983a5990ca9f"
+          assert d["qualification_only"] is True
+          assert d["dependency_updates"]["starlette"]=="1.8.0"
+          PY
+          git -C rag-src diff -- requirements.lite.txt > rag-candidate-source.patch
+          test -s rag-candidate-source.patch
+      - name: Build unpublished native candidate
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "${{ matrix.machine }}"
+          docker build -f rag-src/Dockerfile.noble-trial -t goree-rag-noble:trial rag-src
+          test "$(docker image inspect --format '{{.Architecture}}' goree-rag-noble:trial)" = "${{ matrix.arch }}"
+      - name: Verify patched native XML library and imported modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint sh goree-rag-noble:trial -ec '
+            version=$(dpkg-query -W libxml2 | cut -f2)
+            echo "Native libxml2: $version"
+            dpkg --compare-versions "$version" ge "2.9.14+dfsg-1.3ubuntu3.8"
+            python -c "import jwt, lxml.etree, unstructured, importlib.util; from packaging.version import Version; assert Version(jwt.__version__) == Version(\"2.15.0\"); assert importlib.util.find_spec(\"pip\") is None; print(\"Pinned PyJWT; pip absent from runtime:\", jwt.__version__)"
+          '
+      - name: Exercise pinned RAG app import and XML loader dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The imported RAG config initializes PGVector eagerly. Supply an
+          # entirely disposable pgvector database on an internal-only network.
+          network=omni-rag-ci
+          db=omni-rag-synthetic-pg
+          docker network create --internal "$network"
+          trap 'docker rm -f "$db" >/dev/null 2>&1 || true; docker network rm "$network" >/dev/null 2>&1 || true' EXIT
+          docker run -d --name "$db" --network "$network" \
+            -e POSTGRES_DB=synthetic_db \
+            -e POSTGRES_USER=synthetic_user \
+            -e POSTGRES_PASSWORD=synthetic_password \
+            pgvector/pgvector:pg16 >/dev/null
+          ready=0
+          for i in $(seq 1 25); do
+            if docker exec "$db" pg_isready -U synthetic_user -d synthetic_db >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          docker run --rm -i --network "$network" \
+            -e OPENAI_API_KEY=sk-synthetic-no-external-egress \
+            -e DB_HOST="$db" \
+            -e POSTGRES_DB=synthetic_db \
+            -e POSTGRES_USER=synthetic_user \
+            -e POSTGRES_PASSWORD=synthetic_password \
+            --entrypoint python goree-rag-noble:trial - <<'PY'
+          from lxml import etree
+          from app.utils.document_loader import get_loader
+          from main import app
+          print("Runtime lxml/libxml2:", etree.LIBXML_VERSION)
+          assert any(getattr(route, "path", None) for route in app.routes)
+          for name, content_type in (
+              ("example.xml", "application/octet-stream"),
+              ("example.txt", "application/xml"),
+              ("example.xhtml", "application/xhtml+xml"),
+          ):
+              loader, known, ext = get_loader(name, content_type, "/tmp/synthetic.xml")
+              assert type(loader).__name__ == "UnstructuredXMLLoader"
+              assert known
+          other, known, ext = get_loader("example.txt", "text/plain", "/tmp/synthetic.txt")
+          assert type(other).__name__ == "TextLoader" and known
+          print("Pinned app import and XML MIME/extension routes verified")
+          import os
+          from fastapi.testclient import TestClient
+          client = TestClient(app)
+          os.environ.pop("JWT_SECRET", None)
+          assert client.get("/ids").status_code == 503, "Missing JWT secret must fail closed"
+          os.environ["JWT_SECRET"] = "synthetic-only-jwt-secret"
+          assert client.get("/ids").status_code == 401, "Missing bearer token must be denied"
+          assert client.get("/ids", headers={"Authorization": "Bearer invalid"}).status_code == 401
+          from datetime import datetime, timedelta, timezone
+          import jwt
+          jwt_secret = "synthetic-only-jwt-secret"
+          good_token = jwt.encode({
+              "id": "synthetic-reviewer",
+              "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+          }, jwt_secret, algorithm="HS256")
+          # A valid identity reaches routing; no real database user is involved.
+          allowed = client.get("/synthetic-route-that-does-not-exist", headers={
+              "Authorization": "Bearer " + good_token,
+          })
+          assert allowed.status_code == 404, allowed.text
+          wrong_key = jwt.encode({"id": "synthetic-reviewer"}, "invalid-signature",
+                                 algorithm="HS256")
+          assert client.get("/ids", headers={"Authorization": "Bearer " + wrong_key}).status_code == 401
+          expired = jwt.encode({
+              "id": "synthetic-reviewer",
+              "exp": datetime.now(timezone.utc) - timedelta(minutes=5),
+          }, jwt_secret, algorithm="HS256")
+          assert client.get("/ids", headers={"Authorization": "Bearer " + expired}).status_code == 401
+          print("Synthetic JWT missing-config, absent, malformed, wrong-key, expired and valid paths verified")
+          PY
+      - name: Scan unpublished Ubuntu candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: goree-rag-noble:trial
+          format: json
+          output: rag-noble-trivy.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          exit-code: '0'
+      - name: Show unresolved findings and fail qualification
+        run: |
+          python3 - <<'PY'
+          import json
+          from collections import Counter
+          d=json.load(open("rag-noble-trivy.json"))
+          assert d.get("Results"), "No Trivy scan inventory"
+          v=[x for r in d["Results"] for x in r.get("Vulnerabilities",[])]
+          print("Severity totals:",dict(Counter(x.get("Severity") for x in v)))
+          critical_high=[x for x in v if x.get("Severity") in ("CRITICAL","HIGH")]
+          if critical_high: raise SystemExit("Unresolved critical/high findings")
+          PY
+      - name: Generate and validate CycloneDX RAG runtime inventory
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: goree-rag-noble:trial
+          format: cyclonedx
+          output: rag-candidate-sbom.cdx.json
+          scanners: vuln
+          exit-code: '0'
+      - name: Require nonempty software bill of materials
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("rag-candidate-sbom.cdx.json").read_text())
+          assert data.get("bomFormat") == "CycloneDX"
+          assert len(data.get("components") or []) > 0
+          print("RAG SBOM components:",len(data["components"]))
+          PY
+      - name: Verify and archive pinned RAG source provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C rag-src rev-parse HEAD)" = c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
+          test -s rag-src/LICENSE
+          test -s rag-src/Dockerfile.noble-trial
+          test -s rag-src/goree-rag-candidate.json
+          test -s rag-candidate-source.patch
+          tar -czf rag-modified-source.tar.gz --exclude=.git \
+            --exclude=__pycache__ --exclude=.pytest_cache \
+            -C rag-src .
+          tar -tzf rag-modified-source.tar.gz > "$RUNNER_TEMP/rag-source-list.txt"
+          grep -Fxq './LICENSE' "$RUNNER_TEMP/rag-source-list.txt"
+          grep -Fxq './app/middleware.py' "$RUNNER_TEMP/rag-source-list.txt"
+          grep -Fxq './goree-rag-candidate.json' "$RUNNER_TEMP/rag-source-list.txt"
+          echo 'Pinned MIT source and applied modifications archived'
+      - name: Retain source provenance artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rag-noble-source-${{ matrix.arch }}
+          path: |
+            rag-modified-source.tar.gz
+            rag-candidate-source.patch
+            rag-src/goree-rag-candidate.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Save source inventory
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rag-ubuntu-noble-inventory-${{ matrix.arch }}
+          path: rag-candidate-sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Keep isolated scan result
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rag-ubuntu-noble-candidate-${{ matrix.arch }}
+          path: rag-noble-trivy.json
+          if-no-files-found: warn
+          retention-days: 7
