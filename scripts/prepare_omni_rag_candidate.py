@@ -71,7 +71,24 @@ def stage(source: Path) -> None:
         "qualification_only": True,
     }
 
+    # Upstream currently calls the downstream handler when JWT_SECRET is
+    # missing. Fail closed for protected endpoints; health/docs remain exempt.
+    middleware_path = root / "app/middleware.py"
+    middleware = middleware_path.read_text()
+    permissive = """    if not jwt_secret:
+        logger.warn("JWT_SECRET not found in environment variables")
+        return await next_middleware_call()"""
+    guarded = """    if not jwt_secret:
+        logger.error("JWT_SECRET missing; refusing protected RAG request")
+        return JSONResponse(
+            status_code=503, content={"detail": "Authentication is unavailable"}
+        )"""
+    if middleware.count(permissive) != 1:
+        raise ValueError("Unexpected upstream RAG JWT middleware behavior")
+    middleware = middleware.replace(permissive, guarded)
+
     requirements.write_text(changed)
+    middleware_path.write_text(middleware)
     (root / "Dockerfile.noble-trial").write_text(DOCKERFILE)
     (root / "goree-rag-candidate.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Prepared isolated RAG candidate at {UPSTREAM_SHA}; no image published")
