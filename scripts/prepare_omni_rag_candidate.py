@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 UPSTREAM_SHA = "c4e5cbf79fcece1df9adfff5dfed983a5990ca9f"
-UPGRADES = {"PyJWT": ("2.13.0", "2.14.0"), "fastapi": ("0.115.12", "0.143.3")}
+UPGRADES = {"PyJWT": ("2.13.0", "2.15.0"), "fastapi": ("0.115.12", "0.143.3")}
 STARLETTE = "1.8.0"
 
 DOCKERFILE = """FROM ubuntu:24.04
@@ -19,7 +19,7 @@ RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH" SCARF_NO_ANALYTICS=true
 WORKDIR /app
 COPY requirements.lite.txt .
-RUN pip install --no-cache-dir -r requirements.lite.txt
+RUN pip install --no-cache-dir --upgrade pip==26.2.0 && pip install --no-cache-dir -r requirements.lite.txt
 COPY . .
 CMD ["python","main.py"]
 """
