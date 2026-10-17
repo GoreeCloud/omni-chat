@@ -128,11 +128,31 @@ jobs:
           if severe:
               raise SystemExit("Admin trial image did not qualify")
           PY
+      - name: Generate CycloneDX dependency inventory
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: omni-admin-candidate:trial
+          format: cyclonedx
+          output: admin-candidate-sbom.cdx.json
+          scanners: vuln
+          exit-code: '0'
+      - name: Validate non-empty CycloneDX inventory
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          bom=json.loads(Path("admin-candidate-sbom.cdx.json").read_text())
+          if bom.get("bomFormat")!="CycloneDX" or not bom.get("components"):
+              raise SystemExit("Missing/empty CycloneDX software inventory")
+          print("SBOM component count:",len(bom["components"]))
+          PY
       - name: Preserve scan evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: omni-admin-image-${{ matrix.arch }}-trial
-          path: admin-candidate-trivy.json
+          path: |
+            admin-candidate-trivy.json
+            admin-candidate-sbom.cdx.json
           if-no-files-found: warn
           retention-days: 7
