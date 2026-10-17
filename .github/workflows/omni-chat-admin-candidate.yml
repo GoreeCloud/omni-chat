@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/omni-admin-image-qualification-20261016]
   pull_request:
-    branches: [integrate/omni-chat-dev-20261016]
+    branches: [integrate/omni-chat-dev-20261016, dev]
 
 permissions:
   contents: read
