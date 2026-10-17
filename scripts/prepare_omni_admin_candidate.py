@@ -145,6 +145,15 @@ def stage(source: Path) -> None:
         if patched_config.count(before) != expected:
             raise ValueError(f"Unexpected schema compatibility location: {before}")
         patched_config = patched_config.replace(before, after)
+    # For Zod 4 transform pipelines, edit controls must accept the input
+    # union, not the transformed output schema (e.g. SearXNG engines).
+    for before, after in (
+        ("next = current._def.out;", "next = (current._def as unknown as { in?: t.ZodSchemaLike; out?: t.ZodSchemaLike }).in ?? current._def.out;"),
+        ("next = def.out;", "next = (def as unknown as { in?: t.ZodSchemaLike; out?: t.ZodSchemaLike }).in ?? def.out;"),
+    ):
+        if patched_config.count(before) != 1:
+            raise ValueError(f"Unexpected upstream transform pipeline: {before}")
+        patched_config = patched_config.replace(before, after)
     locale_path = source / "src/locales/en/translation.json"
     locale_content = json.loads(locale_path.read_text())
     translations = {
