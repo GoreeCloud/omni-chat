@@ -1,13 +1,6 @@
 name: Omni Chat accessibility checks
 on:
   pull_request:
-    paths:
-      - 'client/src/**'
-      - 'client/index.html'
-      - 'client/vite.config.ts'
-      - 'client/public/assets/**'
-      - 'tests/omni-chat-accessibility.test.mjs'
-      - '.github/workflows/a11y.yml'
   workflow_dispatch:
 permissions:
   contents: read
