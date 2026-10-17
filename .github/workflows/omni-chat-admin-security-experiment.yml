@@ -3,7 +3,7 @@ name: Omni Chat Admin Panel pinned-source remediation experiment
 on:
   push:
     branches:
-      - experiment/omni-admin-prod-prune-20261016
+      - experiment/omni-admin-runtime-smoke-20261016
 
 permissions:
   contents: read
@@ -128,6 +128,41 @@ jobs:
             }
             console.log("Runtime production dependency isolation verified");
           '
+      - name: Verify startup rejects missing secrets and synthetic health succeeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="goreecloud-admin-remediation:trial"
+          # Production must fail closed without a session secret. This tests
+          # only a synthetic local container; no live backend or user data.
+          if docker run --rm --network none "$image" >/dev/null 2>&1; then
+            echo "Admin started without a session secret" >&2
+            exit 1
+          fi
+          cid=$(docker run --detach --rm --network bridge \
+            -e SESSION_SECRET=0123456789abcdef0123456789abcdef \
+            -e API_SERVER_URL=http://127.0.0.1:3080 \
+            -e VITE_API_BASE_URL=http://127.0.0.1:3080 \
+            "$image")
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          ok=0
+          for attempt in $(seq 1 20); do
+            if docker exec "$cid" bun -e '
+              const response = await fetch("http://127.0.0.1:3000/health");
+              if (response.status !== 200 || (await response.text()) !== "ok") process.exit(1);
+              console.log("Health endpoint: 200 ok");
+            ' >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "Admin failed synthetic startup health check" >&2
+            docker logs "$cid" --tail 80
+            exit 1
+          fi
+          echo "Synthetic Admin start and health check passed"
       - name: Scan local trial image without publishing
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
