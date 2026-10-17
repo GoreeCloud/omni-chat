@@ -60,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm -i --entrypoint python goree-rag-noble:trial - <<'PY'
+          docker run --rm -i --network none -e OPENAI_API_KEY=sk-synthetic-no-network --entrypoint python goree-rag-noble:trial - <<'PY'
           from lxml import etree
           from app.utils.document_loader import get_loader
           from main import app
