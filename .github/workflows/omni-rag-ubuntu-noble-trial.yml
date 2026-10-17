@@ -56,6 +56,28 @@ jobs:
             dpkg --compare-versions "$version" ge "2.9.14+dfsg-1.3ubuntu3.8"
             python -c "import jwt, lxml.etree, unstructured; print(jwt.__version__)"
           '
+      - name: Exercise pinned RAG app import and XML loader dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -i --entrypoint python goree-rag-noble:trial - <<'PY'
+          from lxml import etree
+          from app.utils.document_loader import get_loader
+          from main import app
+          print("Runtime lxml/libxml2:", etree.LIBXML_VERSION)
+          assert any(getattr(route, "path", None) for route in app.routes)
+          for name, content_type in (
+              ("example.xml", "application/octet-stream"),
+              ("example.txt", "application/xml"),
+              ("example.xhtml", "application/xhtml+xml"),
+          ):
+              loader, known, ext = get_loader(name, content_type, "/tmp/synthetic.xml")
+              assert type(loader).__name__ == "UnstructuredXMLLoader"
+              assert known
+          other, known, ext = get_loader("example.txt", "text/plain", "/tmp/synthetic.txt")
+          assert type(other).__name__ == "TextLoader" and known
+          print("Pinned app import and XML MIME/extension routes verified")
+          PY
       - name: Scan unpublished Ubuntu candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
