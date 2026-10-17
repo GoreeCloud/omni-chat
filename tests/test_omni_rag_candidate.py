@@ -98,7 +98,7 @@ class PinnedRagCandidateTests(unittest.TestCase):
             "fastapi==0.143.3",
             "starlette==1.8.0",
             "msgpack==1.2.1",
-            "setuptools==80.10.2",
+            "setuptools==83.0.0",
             "urllib3==2.8.0",
         ):
             self.assertIn(dependency, requirements)
