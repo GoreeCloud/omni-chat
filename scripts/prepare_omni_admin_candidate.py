@@ -173,6 +173,34 @@ def stage(source: Path) -> None:
     dockerfile.write_text(upgraded)
     config_file.write_text(patched_config)
     locale_path.write_text(json.dumps(locale_content, indent=2, ensure_ascii=False) + "\n")
+    # The upstream Langfuse UI test races asynchronous connection verification.
+    # Retain the exact visibility, enabled-state and API assertions, while
+    # awaiting the control before interacting with it.
+    langfuse_test = source / "src/components/configuration/sections/__tests__/LangfuseRenderer.test.tsx"
+    langfuse_source = langfuse_test.read_text()
+    start = "  it('preserves the stored secret when only the public key is edited', async () => {"
+    end = "  it('preserves draft fields when shared connection data refreshes', async () => {"
+    if langfuse_source.count(start) != 1 or langfuse_source.count(end) != 1:
+        raise ValueError("Unexpected upstream Langfuse test structure")
+    before_test, remainder = langfuse_source.split(start)
+    body, after_test = remainder.split(end)
+    old_assertion = """    expect(
+      screen.getByRole('button', { name: 'com_config_langfuse_save_and_enable' }),
+    ).toBeVisible();"""
+    new_assertion = """    expect(
+      await screen.findByRole('button', { name: 'com_config_langfuse_save_and_enable' }),
+    ).toBeVisible();"""
+    old_click = """    fireEvent.click(screen.getByRole('button', { name: 'com_config_langfuse_save_and_enable' }));"""
+    new_click = """    const saveButton = await screen.findByRole('button', {
+      name: 'com_config_langfuse_save_and_enable',
+    });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);"""
+    if body.count(old_assertion) != 1 or body.count(old_click) != 1:
+        raise ValueError("Unexpected upstream Langfuse async assertion")
+    body = body.replace(old_assertion, new_assertion).replace(old_click, new_click)
+    langfuse_test.write_text(before_test + start + body + end + after_test)
+
     print(f"Prepared isolated Admin source at {UPSTREAM_SHA}; no image published")
 
 if __name__ == "__main__":
