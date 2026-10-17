@@ -1,0 +1,84 @@
+name: RAG pinned-source Ubuntu 24.04 security trial
+on:
+  push:
+    branches: [feature/omni-rag-xml-failclosed-20261016]
+permissions:
+  contents: read
+jobs:
+  ubuntu-rag-trial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: LibreChat-AI/rag-api
+          ref: c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
+          persist-credentials: false
+          path: rag-src
+      - name: Pin source and PyJWT update
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C rag-src rev-parse HEAD)" = c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("rag-src/requirements.lite.txt")
+          v=p.read_text()
+          assert v.count("PyJWT==2.13.0")==1
+          p.write_text(v.replace("PyJWT==2.13.0","PyJWT==2.14.0"))
+          PY
+      - name: Prepare isolated Ubuntu Noble runtime recipe
+        run: |
+          cat > rag-src/Dockerfile.noble-trial <<'EOF'
+          FROM ubuntu:24.04
+          ENV DEBIAN_FRONTEND=noninteractive
+          RUN apt-get update && apt-get install -y --no-install-recommends python3.12 python3.12-venv ca-certificates pandoc netcat-openbsd libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+          RUN python3.12 -m venv /opt/venv
+          ENV PATH="/opt/venv/bin:$PATH" SCARF_NO_ANALYTICS=true
+          WORKDIR /app
+          COPY requirements.lite.txt .
+          RUN pip install --no-cache-dir -r requirements.lite.txt
+          COPY . .
+          CMD ["python","main.py"]
+          EOF
+      - name: Build unpublished candidate
+        run: docker build -f rag-src/Dockerfile.noble-trial -t goree-rag-noble:trial rag-src
+      - name: Verify patched native XML library and imported modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint sh goree-rag-noble:trial -ec '
+            version=$(dpkg-query -W -f="${Version}" libxml2)
+            echo "Native libxml2: $version"
+            dpkg --compare-versions "$version" ge "2.9.14+dfsg-1.3ubuntu3.8"
+            python -c "import jwt, lxml.etree, unstructured; print(jwt.__version__)"
+          '
+      - name: Scan unpublished Ubuntu candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: goree-rag-noble:trial
+          format: json
+          output: rag-noble-trivy.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          exit-code: '0'
+      - name: Show unresolved findings and fail qualification
+        run: |
+          python3 - <<'PY'
+          import json
+          from collections import Counter
+          d=json.load(open("rag-noble-trivy.json"))
+          assert d.get("Results"), "No Trivy scan inventory"
+          v=[x for r in d["Results"] for x in r.get("Vulnerabilities",[])]
+          print("Severity totals:",dict(Counter(x.get("Severity") for x in v)))
+          critical_high=[x for x in v if x.get("Severity") in ("CRITICAL","HIGH")]
+          if critical_high: raise SystemExit("Unresolved critical/high findings")
+          PY
+      - name: Keep isolated scan result
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rag-ubuntu-noble-candidate
+          path: rag-noble-trivy.json
+          if-no-files-found: warn
+          retention-days: 7
