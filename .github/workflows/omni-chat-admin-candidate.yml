@@ -179,6 +179,28 @@ jobs:
               raise SystemExit("Missing/empty CycloneDX software inventory")
           print("SBOM component count:",len(bom["components"]))
           PY
+      - name: Retain modified upstream AGPL source for release audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C admin-src rev-parse HEAD)" = 82fb4b61409d5c2e6eceb3d116b89bc957c1620e
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' admin-src/LICENSE
+          test -s admin-src/bun.lock
+          tar --create --gzip --file admin-modified-source.tar.gz \
+            --exclude=.git --exclude=node_modules --exclude=.output \
+            --directory=admin-src .
+          tar -tzf admin-modified-source.tar.gz | grep -Fxq './LICENSE'
+          tar -tzf admin-modified-source.tar.gz | grep -Fxq './Dockerfile'
+          tar -tzf admin-modified-source.tar.gz | grep -Fxq './src/server/config.ts'
+          echo 'Modified AGPL source snapshot retained for compliance review'
+      - name: Upload unpublished source snapshot
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: omni-admin-agpl-source-${{ matrix.arch }}
+          path: admin-modified-source.tar.gz
+          if-no-files-found: warn
+          retention-days: 7
       - name: Preserve scan evidence
         if: always()
         uses: actions/upload-artifact@v6
