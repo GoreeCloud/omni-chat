@@ -3,7 +3,7 @@ name: Omni Chat Admin Panel pinned-source remediation experiment
 on:
   push:
     branches:
-      - experiment/omni-admin-security-20261016
+      - experiment/omni-admin-high-remediation-20261016
 
 permissions:
   contents: read
@@ -50,6 +50,10 @@ jobs:
           doc["overrides"]["@tanstack/react-start-server"] = "1.167.46"
           doc["overrides"]["seroval"] = "1.6.3"
           doc["overrides"]["shell-quote"] = "1.11.0"
+          # Bun version-scoped overrides preserve both dependent major-version lines.
+          doc["overrides"]["brace-expansion@<2"] = "1.1.20"
+          doc["overrides"]["brace-expansion@>=5"] = "5.0.11"
+          doc["overrides"]["tmp"] = "0.2.6"
           # Keep the official Start/Router peer graph coherent; the upstream
           # Admin Panel's old overrides otherwise force incompatible modules.
           versions = {
@@ -111,7 +115,11 @@ jobs:
           if versions != {"1.11.0"}:
               raise SystemExit(f"Unexpected shell-quote versions in image: {versions}")
           critical = [(v.get("VulnerabilityID"),v.get("PkgName")) for v in findings if v.get("Severity") == "CRITICAL"]
-          print("High severity findings still require manual triage:", sum(v.get("Severity") == "HIGH" for v in findings))
+          high = [v for v in findings if v.get("Severity") == "HIGH"]
+          print("High severity findings still require manual triage:", len(high))
+          print("Remaining high-severity packages:", sorted({v.get("PkgName") for v in high}))
+          unsafe = [v for v in high if v.get("PkgName") in {"brace-expansion", "tmp"}]
+          if unsafe: raise SystemExit("Patched brace-expansion/tmp constraints did not eliminate known high findings")
           print("Remaining critical image findings:", critical)
           if critical:
               raise SystemExit("Admin Panel remains blocked by critical vulnerabilities")
