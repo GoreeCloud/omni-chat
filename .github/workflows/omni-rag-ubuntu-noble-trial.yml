@@ -108,7 +108,27 @@ jobs:
           os.environ["JWT_SECRET"] = "synthetic-only-jwt-secret"
           assert client.get("/ids").status_code == 401, "Missing bearer token must be denied"
           assert client.get("/ids", headers={"Authorization": "Bearer invalid"}).status_code == 401
-          print("Synthetic missing-secret and invalid-token paths rejected")
+          from datetime import datetime, timedelta, timezone
+          import jwt
+          jwt_secret = "synthetic-only-jwt-secret"
+          good_token = jwt.encode({
+              "id": "synthetic-reviewer",
+              "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+          }, jwt_secret, algorithm="HS256")
+          # A valid identity reaches routing; no real database user is involved.
+          allowed = client.get("/synthetic-route-that-does-not-exist", headers={
+              "Authorization": "Bearer " + good_token,
+          })
+          assert allowed.status_code == 404, allowed.text
+          wrong_key = jwt.encode({"id": "synthetic-reviewer"}, "invalid-signature",
+                                 algorithm="HS256")
+          assert client.get("/ids", headers={"Authorization": "Bearer " + wrong_key}).status_code == 401
+          expired = jwt.encode({
+              "id": "synthetic-reviewer",
+              "exp": datetime.now(timezone.utc) - timedelta(minutes=5),
+          }, jwt_secret, algorithm="HS256")
+          assert client.get("/ids", headers={"Authorization": "Bearer " + expired}).status_code == 401
+          print("Synthetic JWT missing-config, absent, malformed, wrong-key, expired and valid paths verified")
           PY
       - name: Scan unpublished Ubuntu candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
