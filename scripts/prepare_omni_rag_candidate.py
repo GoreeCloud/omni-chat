@@ -96,7 +96,14 @@ def stage(source: Path) -> None:
         )"""
     if middleware.count(permissive) != 1:
         raise ValueError("Unexpected upstream RAG JWT middleware behavior")
-    middleware = middleware.replace(permissive, guarded)
+    # Avoid recording decoded JWT claims, which may include private identifiers.
+    # Check the pinned upstream contract before writing any transformed files.
+    payload_debug = '        logger.debug(f"{request.url.path} - {payload}")'
+    if middleware.count(payload_debug) != 1:
+        raise ValueError("Unexpected upstream RAG JWT payload debug logging")
+    middleware = middleware.replace(permissive, guarded).replace(
+        payload_debug, '        logger.debug("Authenticated RAG request")'
+    )
 
     requirements.write_text(changed)
     middleware_path.write_text(middleware)
