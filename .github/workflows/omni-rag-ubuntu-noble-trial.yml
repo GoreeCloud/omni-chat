@@ -11,39 +11,36 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          persist-credentials: false
+          path: goree-src
+      - uses: actions/checkout@v5
+        with:
           repository: LibreChat-AI/rag-api
           ref: c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
           persist-credentials: false
           path: rag-src
-      - name: Pin source and PyJWT update
+      - name: Verify pinned-source guard and stage source candidate
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C rag-src rev-parse HEAD)" = c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
+          touch rag-src/.unexpected-untracked
+          if python3 goree-src/scripts/prepare_omni_rag_candidate.py rag-src > "$RUNNER_TEMP/rag-dirty.log" 2>&1; then
+            echo 'RAG candidate accepted dirty source' >&2
+            exit 1
+          fi
+          grep -Fq 'Refusing a dirty pinned RAG checkout' "$RUNNER_TEMP/rag-dirty.log"
+          rm rag-src/.unexpected-untracked
+          python3 goree-src/scripts/prepare_omni_rag_candidate.py rag-src
           python3 - <<'PY'
+          import json
           from pathlib import Path
-          p=Path("rag-src/requirements.lite.txt")
-          v=p.read_text()
-          assert v.count("PyJWT==2.13.0")==1
-          assert v.count("fastapi==0.115.12")==1
-          v=v.replace("PyJWT==2.13.0","PyJWT==2.14.0")
-          v=v.replace("fastapi==0.115.12", "fastapi==0.143.3\nstarlette==1.8.0")
-          p.write_text(v)
+          d=json.loads(Path("rag-src/goree-rag-candidate.json").read_text())
+          assert d["upstream_sha"]=="c4e5cbf79fcece1df9adfff5dfed983a5990ca9f"
+          assert d["qualification_only"] is True
+          assert d["dependency_updates"]["starlette"]=="1.8.0"
           PY
-      - name: Prepare isolated Ubuntu Noble runtime recipe
-        run: |
-          cat > rag-src/Dockerfile.noble-trial <<'EOF'
-          FROM ubuntu:24.04
-          ENV DEBIAN_FRONTEND=noninteractive
-          RUN apt-get update && apt-get install -y --no-install-recommends python3.12 python3.12-venv ca-certificates pandoc netcat-openbsd libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
-          RUN python3.12 -m venv /opt/venv
-          ENV PATH="/opt/venv/bin:$PATH" SCARF_NO_ANALYTICS=true
-          WORKDIR /app
-          COPY requirements.lite.txt .
-          RUN pip install --no-cache-dir -r requirements.lite.txt
-          COPY . .
-          CMD ["python","main.py"]
-          EOF
+          git -C rag-src diff -- requirements.lite.txt > rag-candidate-source.patch
+          test -s rag-candidate-source.patch
       - name: Build unpublished candidate
         run: docker build -f rag-src/Dockerfile.noble-trial -t goree-rag-noble:trial rag-src
       - name: Verify patched native XML library and imported modules
