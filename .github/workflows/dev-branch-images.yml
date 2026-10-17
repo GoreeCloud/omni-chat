@@ -21,6 +21,8 @@ on:
     branches:
       - dev
     paths:
+      - '.github/workflows/dev-branch-images.yml'
+      - 'tests/omni-dev-build-only-workflow.test.mjs'
       - 'api/**'
       - 'client/**'
       - 'config/**'
