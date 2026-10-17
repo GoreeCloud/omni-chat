@@ -98,6 +98,11 @@ def stage(source: Path) -> None:
         if patched_config.count(before) != 1:
             raise ValueError(f"Unexpected upstream schema helper: {before}")
         patched_config = patched_config.replace(before, after)
+    schema_paths_before = "    cachedSchemaPathSet = new Set(paths);"
+    schema_paths_after = "    cachedSchemaPathSet = new Set(paths);\n    // The indexed secret-preview filter needs complete schema leaf paths.\n    // Zod 4 represents wrapped objects and array elements differently, so\n    // walk the canonical schema directly without trusting legacy UI extraction.\n    const visitSchema = (node: t.ZodSchemaLike, path: string, depth: number): void => {\n      if (!node || depth > 16) return;\n      const item = unwrapSchema(node);\n      if (item?.shape && typeof item.shape === 'object') {\n        for (const [key, child] of Object.entries(item.shape)) {\n          const childPath = path ? `${path}.${key}` : key;\n          cachedSchemaPathSet!.add(childPath);\n          visitSchema(child as t.ZodSchemaLike, childPath, depth + 1);\n        }\n      } else if (schemaTypeName(item) === 'ZodArray') {\n        const array = item as unknown as {\n          element?: t.ZodSchemaLike;\n          _def?: { element?: t.ZodSchemaLike; type?: t.ZodSchemaLike | string };\n        };\n        const element = array.element ?? array._def?.element ??\n          (typeof array._def?.type === 'object' ? array._def.type : undefined);\n        if (element) visitSchema(element, path, depth + 1);\n      }\n    };\n    visitSchema(configSchema as t.ZodSchemaLike, '', 0);"
+    if patched_config.count(schema_paths_before) != 1:
+        raise ValueError("Unexpected upstream schema path extraction")
+    patched_config = patched_config.replace(schema_paths_before, schema_paths_after)
     package.write_text(json.dumps(document, indent=2) + "\n")
     dockerfile.write_text(upgraded)
     config_file.write_text(patched_config)
