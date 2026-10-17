@@ -2,6 +2,20 @@ name: Static Checks
 
 on:
   pull_request:
+    paths:
+      - 'api/**'
+      - 'client/**'
+      - 'config/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'eslint.config.mjs'
+      - 'eslint-suppressions.json'
+      - '**/eslint-suppressions.json'
+      - '.github/workflows/static-checks.yml'
+      - '!**.md'
+      - '**'
 
 permissions:
   contents: read

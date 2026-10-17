@@ -38,7 +38,14 @@ test('protected dev status workflows are not skipped by PR path filters', () => 
     const source = readFileSync(new URL('../.github/workflows/' + file, import.meta.url), 'utf8');
     const triggers = source.split('\non:\n')[1]?.split('\npermissions:')[0] ?? '';
     assert.match(triggers, /^  pull_request:\s*$/m, file);
-    assert.doesNotMatch(triggers, /^\s+paths:\s*$/m, file);
+    if (file === 'static-checks.yml') {
+      // Preserve source-coverage validation and trigger the required job on every PR.
+      assert.match(triggers, /^ {4}paths:\s*$/m);
+      assert.ok(triggers.trimEnd().endsWith("- '**'"), file);
+      assert.match(triggers, /eslint-suppressions\.json/);
+    } else {
+      assert.doesNotMatch(triggers, /^\s+paths:\s*$/m, file);
+    }
     assert.ok(source.includes(requiredJob), file);
   }
 });
