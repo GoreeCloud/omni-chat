@@ -6,8 +6,19 @@ permissions:
   contents: read
 jobs:
   ubuntu-rag-trial:
-    runs-on: ubuntu-24.04
+    name: RAG native ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            machine: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            machine: aarch64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
         with:
@@ -41,8 +52,12 @@ jobs:
           PY
           git -C rag-src diff -- requirements.lite.txt > rag-candidate-source.patch
           test -s rag-candidate-source.patch
-      - name: Build unpublished candidate
-        run: docker build -f rag-src/Dockerfile.noble-trial -t goree-rag-noble:trial rag-src
+      - name: Build unpublished native candidate
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "${{ matrix.machine }}"
+          docker build -f rag-src/Dockerfile.noble-trial -t goree-rag-noble:trial rag-src
+          test "$(docker image inspect --format '{{.Architecture}}' goree-rag-noble:trial)" = "${{ matrix.arch }}"
       - name: Verify patched native XML library and imported modules
         shell: bash
         run: |
@@ -174,7 +189,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: rag-ubuntu-noble-inventory
+          name: rag-ubuntu-noble-inventory-${{ matrix.arch }}
           path: rag-candidate-sbom.cdx.json
           if-no-files-found: warn
           retention-days: 7
@@ -182,7 +197,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: rag-ubuntu-noble-candidate
+          name: rag-ubuntu-noble-candidate-${{ matrix.arch }}
           path: rag-noble-trivy.json
           if-no-files-found: warn
           retention-days: 7
