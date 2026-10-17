@@ -71,6 +71,38 @@ jobs:
               if (!existsSync("/app/node_modules/" + p)) throw new Error("Runtime package missing: " + p);
             }
           '
+      - name: Verify startup rejects missing credentials and synthetic health responds
+        shell: bash
+        run: |
+          set -euo pipefail
+          image=omni-admin-candidate:trial
+          # No live backend or real user data is connected to the trial.
+          if docker run --rm --network none "$image" >/dev/null 2>&1; then
+            echo "Admin unexpectedly started without SESSION_SECRET" >&2
+            exit 1
+          fi
+          cid=$(docker run --detach --rm --network bridge \
+            -e SESSION_SECRET=0123456789abcdef0123456789abcdef \
+            -e API_SERVER_URL=http://127.0.0.1:3080 \
+            -e VITE_API_BASE_URL=http://127.0.0.1:3080 "$image")
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          ok=0
+          for attempt in $(seq 1 20); do
+            if docker exec "$cid" bun -e '
+              const response = await fetch("http://127.0.0.1:3000/health");
+              if (response.status !== 200 || (await response.text()) !== "ok") process.exit(1);
+            ' >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ok" -ne 1 ]; then
+            docker logs "$cid" --tail 70
+            echo "Synthetic Admin health check failed" >&2
+            exit 1
+          fi
+          echo "Synthetic Admin startup and health qualified on native ${{ matrix.arch }}"
       - name: Scan unpublished trial image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
