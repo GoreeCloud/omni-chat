@@ -185,6 +185,34 @@ jobs:
           assert len(data.get("components") or []) > 0
           print("RAG SBOM components:",len(data["components"]))
           PY
+      - name: Verify and archive pinned RAG source provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C rag-src rev-parse HEAD)" = c4e5cbf79fcece1df9adfff5dfed983a5990ca9f
+          test -s rag-src/LICENSE
+          test -s rag-src/Dockerfile.noble-trial
+          test -s rag-src/goree-rag-candidate.json
+          test -s rag-candidate-source.patch
+          tar -czf rag-modified-source.tar.gz --exclude=.git \
+            --exclude=__pycache__ --exclude=.pytest_cache \
+            -C rag-src .
+          tar -tzf rag-modified-source.tar.gz > "$RUNNER_TEMP/rag-source-list.txt"
+          grep -Fxq './LICENSE' "$RUNNER_TEMP/rag-source-list.txt"
+          grep -Fxq './app/middleware.py' "$RUNNER_TEMP/rag-source-list.txt"
+          grep -Fxq './goree-rag-candidate.json' "$RUNNER_TEMP/rag-source-list.txt"
+          echo 'Pinned MIT source and applied modifications archived'
+      - name: Retain source provenance artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rag-noble-source-${{ matrix.arch }}
+          path: |
+            rag-modified-source.tar.gz
+            rag-candidate-source.patch
+            rag-src/goree-rag-candidate.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Save source inventory
         if: always()
         uses: actions/upload-artifact@v6
