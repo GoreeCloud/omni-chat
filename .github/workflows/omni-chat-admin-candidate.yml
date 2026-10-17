@@ -81,6 +81,9 @@ jobs:
         working-directory: admin-src
         run: |
           bun run test src/server/auth.oauth.test.ts src/server/session.test.ts src/server/scopes.test.ts src/server/capabilities.test.ts
+      - name: Verify complete Admin Panel unit and component suite
+        working-directory: admin-src
+        run: bun run test
       - name: Verify upstream AGPL license is retained
         shell: bash
         run: |
