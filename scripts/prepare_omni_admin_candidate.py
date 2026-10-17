@@ -31,6 +31,11 @@ def stage(source: Path) -> None:
     ).strip()
     if actual != UPSTREAM_SHA:
         raise ValueError(f"Refusing unverified Admin Panel source: {actual}")
+    changed = subprocess.check_output(
+        ["git", "-C", str(source), "status", "--porcelain"], text=True
+    ).strip()
+    if changed:
+        raise ValueError("Refusing to modify a dirty upstream checkout")
 
     package = source / "package.json"
     document = json.loads(package.read_text())
