@@ -169,10 +169,6 @@ def stage(source: Path) -> None:
         if key in locale_content:
             raise ValueError(f"Unexpected existing Admin locale: {key}")
         locale_content[key] = value
-    package.write_text(json.dumps(document, indent=2) + "\n")
-    dockerfile.write_text(upgraded)
-    config_file.write_text(patched_config)
-    locale_path.write_text(json.dumps(locale_content, indent=2, ensure_ascii=False) + "\n")
     # The upstream Langfuse UI test races asynchronous connection verification.
     # Retain the exact visibility, enabled-state and API assertions, while
     # awaiting the control before interacting with it.
@@ -199,7 +195,27 @@ def stage(source: Path) -> None:
     if body.count(old_assertion) != 1 or body.count(old_click) != 1:
         raise ValueError("Unexpected upstream Langfuse async assertion")
     body = body.replace(old_assertion, new_assertion).replace(old_click, new_click)
-    langfuse_test.write_text(before_test + start + body + end + after_test)
+    langfuse_source = before_test + start + body + end + after_test
+
+    # The disabled-connection test also races asynchronous verification on
+    # ARM64; wait for the actionable control without dropping its API assertion.
+    second_start = "  it('enables a disabled connection when credential edits are saved with Save & enable', async () => {"
+    second_end = "  it('re-verifies the stored connection when an invalid key edit is cancelled', async () => {"
+    if langfuse_source.count(second_start) != 1 or langfuse_source.count(second_end) != 1:
+        raise ValueError("Unexpected upstream disabled Langfuse test structure")
+    before_second, remainder = langfuse_source.split(second_start)
+    second_body, after_second = remainder.split(second_end)
+    if second_body.count(old_click) != 1:
+        raise ValueError("Unexpected upstream disabled Langfuse Save & enable assertion")
+    second_body = second_body.replace(old_click, new_click)
+    langfuse_source = before_second + second_start + second_body + second_end + after_second
+
+    # Validate all expected upstream patterns before any source mutation.
+    package.write_text(json.dumps(document, indent=2) + "\n")
+    dockerfile.write_text(upgraded)
+    config_file.write_text(patched_config)
+    locale_path.write_text(json.dumps(locale_content, indent=2, ensure_ascii=False) + "\n")
+    langfuse_test.write_text(langfuse_source)
 
     print(f"Prepared isolated Admin source at {UPSTREAM_SHA}; no image published")
 

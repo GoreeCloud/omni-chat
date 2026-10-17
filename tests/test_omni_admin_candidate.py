@@ -29,9 +29,21 @@ class AdminCandidateGuardTests(unittest.TestCase):
             "bun prune --production",
             "RUN apk upgrade --no-cache",
             '"tmp": "0.2.7"',
+            'Unexpected upstream disabled Langfuse Save & enable assertion',
+            'second_body = second_body.replace(old_click, new_click)',
         ):
             with self.subTest(token=token):
                 self.assertIn(token, code)
+
+    def test_validates_langfuse_patch_targets_before_any_source_write(self):
+        code = RECIPE.read_text()
+        self.assertLess(
+            code.index('second_body = second_body.replace(old_click, new_click)'),
+            code.index('package.write_text('),
+            'Expected pinned upstream test validation before any file mutation',
+        )
+        self.assertIn('await waitFor(() => expect(saveButton).toBeEnabled())', code)
+        self.assertIn('if second_body.count(old_click) != 1:', code)
 
 
 if __name__ == "__main__":
