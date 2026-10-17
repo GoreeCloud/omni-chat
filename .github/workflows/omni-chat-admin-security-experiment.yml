@@ -3,14 +3,14 @@ name: Omni Chat Admin Panel pinned-source remediation experiment
 on:
   push:
     branches:
-      - experiment/omni-admin-prod-prune-20261016
+      - experiment/omni-admin-arm64-20261016
 
 permissions:
   contents: read
 
 jobs:
   admin-source-remediation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     steps:
       - name: Checkout a known upstream revision without credentials
