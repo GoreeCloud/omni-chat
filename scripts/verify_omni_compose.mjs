@@ -15,6 +15,26 @@ if (!configPath) {
       services.rag_api,
   );
 
+  // Validate the *effective* Compose model, not just the checked-in YAML.
+  // Published ports and host networking on an inherited dependency would
+  // bypass the development API's loopback-only boundary.
+  const assertInternalIsolation = (model, profile) => {
+    for (const name of ['mongodb', 'meilisearch', 'vectordb', 'rag_api']) {
+      const service = model[name];
+      assert.ok(service, `${profile}: ${name} service must exist`);
+      assert.ok(
+        !service.ports?.length,
+        `${profile}: ${name} must not publish host ports`,
+      );
+      assert.ok(
+        !service.network_mode,
+        `${profile}: ${name} must not use network_mode`,
+      );
+    }
+  };
+  assertInternalIsolation(services, 'default');
+  assert.ok(!services.api.network_mode, 'development API must not use network_mode');
+
   const apiEnv = services.api.environment;
   const mongoEnv = services.mongodb.environment;
   const meiliEnv = services.meilisearch.environment;
@@ -47,6 +67,14 @@ if (!configPath) {
   assert.ok(adminConfigPath, 'opt-in admin Compose configuration is required');
   const adminServices = JSON.parse(readFileSync(adminConfigPath, 'utf8')).services;
   assert.ok(adminServices?.['admin-panel'], 'admin profile must activate the admin panel');
+  assertInternalIsolation(adminServices, 'admin');
+  assert.ok(!adminServices.api?.network_mode, 'admin profile API must not use network_mode');
+  assert.equal(adminServices.api?.ports?.length, 1, 'admin profile API must publish one port');
+  assert.equal(adminServices.api.ports[0].host_ip, '127.0.0.1', 'admin profile API must bind to localhost');
+  assert.ok(
+    !adminServices['admin-panel'].network_mode,
+    'admin panel must not use network_mode',
+  );
   assert.match(
     adminServices['admin-panel'].image,
     /^registry\.librechat\.ai\/clickhouse\/librechat-admin-panel@sha256:[a-f0-9]{64}$/,

@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify Omni Chat identity contract
-        run: node --test tests/omni-chat-identity.test.mjs tests/omni-chat-brand-icon.test.mjs tests/omni-chat-ci-capacity.test.mjs tests/omni-chat-upstream.test.mjs tests/omni-chat-telemetry-privacy.test.mjs tests/omni-chat-math-security.test.mjs tests/omni-chat-document-security.test.mjs
+        run: node --test tests/omni-chat-identity.test.mjs tests/omni-chat-brand-icon.test.mjs tests/omni-chat-ci-capacity.test.mjs tests/omni-chat-upstream.test.mjs tests/omni-chat-telemetry-privacy.test.mjs tests/omni-chat-math-security.test.mjs tests/omni-chat-document-security.test.mjs tests/omni-chat-compose-isolation.test.mjs
   production-dependency-advisories:
     runs-on: ubuntu-latest
     steps:
