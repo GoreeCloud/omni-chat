@@ -34,6 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s goree-src/tests -p test_omni_rag_candidate.py -v
           touch rag-src/.unexpected-untracked
           if python3 goree-src/scripts/prepare_omni_rag_candidate.py rag-src > "$RUNNER_TEMP/rag-dirty.log" 2>&1; then
             echo 'RAG candidate accepted dirty source' >&2
