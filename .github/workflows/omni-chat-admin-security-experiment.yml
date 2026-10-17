@@ -150,8 +150,11 @@ jobs:
           findings = [v for r in results for v in (r.get("Vulnerabilities") or [])]
           packages = [p for result in results for p in (result.get("Packages") or [])]
           versions = {p.get("Version") for p in packages if p.get("Name") == "shell-quote"}
-          if versions != {"1.11.0"}:
+          # Production pruning removes development-only shell-quote entirely.
+          # Reject it if any version other than the patched one is still present.
+          if versions and versions != {"1.11.0"}:
               raise SystemExit(f"Unexpected shell-quote versions in image: {versions}")
+          print("Production shell-quote inventory:", sorted(versions) or "pruned")
           critical = [(v.get("VulnerabilityID"),v.get("PkgName")) for v in findings if v.get("Severity") == "CRITICAL"]
           high = [v for v in findings if v.get("Severity") == "HIGH"]
           print("High severity findings still require manual triage:", len(high))
