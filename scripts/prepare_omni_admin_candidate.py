@@ -133,9 +133,37 @@ def stage(source: Path) -> None:
         if patched_config.count(before) != expected:
             raise ValueError(f"Unexpected upstream Admin type mapper: {before}")
         patched_config = patched_config.replace(before, after)
+    # Correct Zod 4 literal and numeric-enum metadata, normalize validation
+    # errors for both generations, and retain legacy schema inspection contracts.
+    for before, after, expected in (
+        ("const literalValue = innerSchema._def.value;", "const def = innerSchema._def as unknown as { value?: unknown; values?: unknown[] };\n    const literalValue = def.value ?? def.values?.[0];", 1),
+        ("result.error.errors.map(", "(result.error.issues ?? result.error.errors).map(", 1),
+        ("  return current;\n}\n\nexport function validateFieldValue(", "  if (current?._def && !current._def.typeName) {\n    current._def.typeName = schemaTypeName(current);\n  }\n  return current;\n}\n\nexport function validateFieldValue(", 1),
+        ("return `${issuePath}: ${issue.message}`;", "const message = issue.message.startsWith('Invalid input: expected') &&\n          issue.message.includes('received undefined') ? 'Required' : issue.message;\n        return `${issuePath}: ${message}`;", 1),
+        ("return `enum(${Array.isArray(values) ? values.join(' | ') : Object.values(values).join(' | ')})`;", "const numeric = Array.isArray(values) ? [] :\n      Object.entries(values).filter(([key, value]) => !/^\\\\d+$/.test(key) && typeof value === 'number');\n    if (numeric.length > 0) {\n      return `enum(${numeric.map(([key, value]) => `${key}=${value}`).join(' | ')})`;\n    }\n    return `enum(${Array.isArray(values) ? values.join(' | ') : Object.values(values).join(' | ')})`;", 1),
+    ):
+        if patched_config.count(before) != expected:
+            raise ValueError(f"Unexpected schema compatibility location: {before}")
+        patched_config = patched_config.replace(before, after)
+    locale_path = source / "src/locales/en/translation.json"
+    locale_content = json.loads(locale_path.read_text())
+    translations = {
+        "com_config_field_repo": "Repository",
+        "com_config_field_ref": "Reference",
+        "com_config_field_paths": "Paths",
+        "com_config_field_paths_item": "Path",
+        "com_config_field_skillDiscoveryDepth": "Skill discovery depth",
+        "com_config_field_credentialKey": "Credential key",
+        "com_config_field_token": "Token",
+    }
+    for key, value in translations.items():
+        if key in locale_content:
+            raise ValueError(f"Unexpected existing Admin locale: {key}")
+        locale_content[key] = value
     package.write_text(json.dumps(document, indent=2) + "\n")
     dockerfile.write_text(upgraded)
     config_file.write_text(patched_config)
+    locale_path.write_text(json.dumps(locale_content, indent=2, ensure_ascii=False) + "\n")
     print(f"Prepared isolated Admin source at {UPSTREAM_SHA}; no image published")
 
 if __name__ == "__main__":
