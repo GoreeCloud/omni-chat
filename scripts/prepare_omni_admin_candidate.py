@@ -80,8 +80,27 @@ def stage(source: Path) -> None:
     ).replace(
         install, "RUN bun install --frozen-lockfile \\\n    && bun prune --production\n"
     )
+    # Zod 4 exposes _def.type ("optional", "array", etc.) instead of
+    # the Zod 3 _def.typeName metadata used by the pinned scope helpers.
+    # This trial stages the smallest shared compatibility shim; tests must pass.
+    config_file = source / "src/server/config.ts"
+    original_config = config_file.read_text()
+    patched_config = original_config
+    for before, after in (
+        ("const INDEXED_ARRAY_RE = /^(.+)\\.(\\d+)$/;", "function schemaTypeName(schema: t.ZodSchemaLike): string | undefined {\n  const kind = schema?._def?.typeName ?? schema?._def?.type;\n  if (typeof kind !== 'string') return undefined;\n  return kind.startsWith('Zod') ? kind : `Zod${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;\n}\n\nconst INDEXED_ARRAY_RE = /^(.+)\\.(\\d+)$/;"),
+        ("while (current?._def?.typeName && WRAPPER_TYPES.has(current._def.typeName)) {", "while (schemaTypeName(current) && WRAPPER_TYPES.has(schemaTypeName(current)!)) {"),
+        ("if (current._def.typeName === 'ZodLazy') {", "if (schemaTypeName(current) === 'ZodLazy') {"),
+        ("} else if (current._def.typeName === 'ZodPipeline') {", "} else if (schemaTypeName(current) === 'ZodPipeline') {"),
+        ("} else if (current._def.typeName === 'ZodEffects') {", "} else if (schemaTypeName(current) === 'ZodEffects') {"),
+        ("const typeName = unwrapped._def.typeName;", "const typeName = schemaTypeName(unwrapped);"),
+        ("if (unwrapped?._def?.typeName !== 'ZodArray') return null;", "if (schemaTypeName(unwrapped) !== 'ZodArray') return null;"),
+    ):
+        if patched_config.count(before) != 1:
+            raise ValueError(f"Unexpected upstream schema helper: {before}")
+        patched_config = patched_config.replace(before, after)
     package.write_text(json.dumps(document, indent=2) + "\n")
     dockerfile.write_text(upgraded)
+    config_file.write_text(patched_config)
     print(f"Prepared isolated Admin source at {UPSTREAM_SHA}; no image published")
 
 if __name__ == "__main__":
