@@ -27,7 +27,7 @@ jobs:
           assert v.count("PyJWT==2.13.0")==1
           assert v.count("fastapi==0.115.12")==1
           v=v.replace("PyJWT==2.13.0","PyJWT==2.14.0")
-          v=v.replace("fastapi==0.115.12", "fastapi==0.143.3\\nstarlette==1.8.0")
+          v=v.replace("fastapi==0.115.12", "fastapi==0.143.3\nstarlette==1.8.0")
           p.write_text(v)
           PY
       - name: Prepare isolated Ubuntu Noble runtime recipe
