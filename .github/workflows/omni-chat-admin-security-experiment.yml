@@ -53,7 +53,7 @@ jobs:
           # A scoped tmp update is compatible with the existing dependency line.
           # brace-expansion spans incompatible 1.x/5.x majors; keep it blocked for
           # separate, dependency-aware remediation rather than forcing one major.
-          doc["overrides"]["tmp"] = "0.2.6"
+          doc["overrides"]["tmp"] = "0.2.7"
           # Keep the official Start/Router peer graph coherent; the upstream
           # Admin Panel's old overrides otherwise force incompatible modules.
           versions = {
@@ -97,7 +97,7 @@ jobs:
           installed = sorted(set(re.findall(r'"((?:brace-expansion|tmp)@[0-9]+\.[0-9]+\.[0-9]+)"', lock)))
           print("Bun resolved security package versions:", installed)
           bad = [version for version in installed if version == "tmp@0.2.5"]
-          if not installed or bad:
+          if "tmp@0.2.7" not in installed or bad:
               raise SystemExit(f"Known vulnerable lockfile packages remain: {bad}")
           PY
       - name: Verify frontend builds with updated TanStack dependencies
