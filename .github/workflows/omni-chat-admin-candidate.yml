@@ -57,6 +57,16 @@ jobs:
         run: |
           bun install
           bun run build
+      - name: Verify pinned Admin auth and session regression suite
+        working-directory: admin-src
+        run: |
+          bun run test src/server/auth.oauth.test.ts src/server/session.test.ts src/server/scopes.test.ts src/server/capabilities.test.ts
+      - name: Verify upstream AGPL license is retained
+        shell: bash
+        run: |
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' admin-src/LICENSE
+          test "$(git -C admin-src rev-parse HEAD)" = 82fb4b61409d5c2e6eceb3d116b89bc957c1620e
+          echo 'Exact upstream source and AGPL license verified in disposable trial'
       - name: Build and check native runtime
         run: |
           set -euo pipefail
