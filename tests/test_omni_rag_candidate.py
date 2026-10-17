@@ -25,7 +25,11 @@ class PinnedRagCandidateTests(unittest.TestCase):
             "requirements.lite.txt": "PyJWT==2.13.0\nfastapi==0.115.12\n",
             "Dockerfile.lite": "FROM python:3.12-slim AS lite\n",
             "LICENSE": "MIT License\nSynthetic licensed fixture.\n",
-            "app/middleware.py": "async def auth(next_middleware_call, jwt_secret):\n" + PERMISSIVE + "\n",
+            "app/middleware.py": (
+                "async def auth(next_middleware_call, jwt_secret):\n"
+                + PERMISSIVE
+                + '\n        logger.debug(f"{request.url.path} - {payload}")\n'
+            ),
         }
         for name, text in self.original.items():
             (self.root / name).write_text(text, encoding="utf-8")
@@ -67,6 +71,17 @@ class PinnedRagCandidateTests(unittest.TestCase):
             self.run_stage()
         self.assert_unmodified()
 
+    def test_unexpected_jwt_payload_debug_log_rejects_before_mutation(self):
+        invalid = self.original["app/middleware.py"].replace(
+            'logger.debug(f"{request.url.path} - {payload}")',
+            'logger.debug("changed-upstream-log-contract")',
+        )
+        (self.root / "app/middleware.py").write_text(invalid, encoding="utf-8")
+        self.original["app/middleware.py"] = invalid
+        with self.assertRaisesRegex(ValueError, "Unexpected upstream RAG JWT payload debug logging"):
+            self.run_stage()
+        self.assert_unmodified()
+
     def test_conflicting_existing_dependency_pin_rejects_without_mutation(self):
         invalid = self.original["requirements.lite.txt"] + "urllib3==0.0.1\n"
         (self.root / "requirements.lite.txt").write_text(invalid, encoding="utf-8")
@@ -90,6 +105,8 @@ class PinnedRagCandidateTests(unittest.TestCase):
         middleware = (self.root / "app/middleware.py").read_text()
         self.assertIn("status_code=503", middleware)
         self.assertNotIn("return await next_middleware_call()", middleware)
+        self.assertIn('logger.debug("Authenticated RAG request")', middleware)
+        self.assertNotIn('logger.debug(f"{request.url.path} - {payload}")', middleware)
         manifest = (self.root / "goree-rag-candidate.json").read_text()
         self.assertIn(candidate.UPSTREAM_SHA, manifest)
         self.assertIn('"qualification_only": true', manifest)
