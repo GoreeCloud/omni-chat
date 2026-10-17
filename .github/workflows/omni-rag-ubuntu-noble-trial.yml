@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm --entrypoint sh goree-rag-noble:trial -ec '
-            version=$(dpkg-query -W -f="${Version}" libxml2)
+            version=$(dpkg-query -W libxml2 | cut -f2)
             echo "Native libxml2: $version"
             dpkg --compare-versions "$version" ge "2.9.14+dfsg-1.3ubuntu3.8"
             python -c "import jwt, lxml.etree, unstructured; print(jwt.__version__)"
