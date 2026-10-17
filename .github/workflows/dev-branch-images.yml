@@ -1,7 +1,22 @@
-name: Docker Dev Branch Images Build
+name: Docker Dev Branch Images Build-Only
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [dev]
+    paths:
+      - '.github/workflows/dev-branch-images.yml'
+      - 'tests/omni-dev-build-only-workflow.test.mjs'
+      - 'Dockerfile'
+      - 'Dockerfile.multi'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'api/**'
+      - 'client/**'
+      - 'packages/**'
+      - 'config/**'
+      - 'skill/**'
   push:
     branches:
       - dev
@@ -24,25 +39,73 @@ on:
       - 'skill/**/*.md'
       - '!skill/README.md'
 
+# An untrusted development change must never cause registry publication.
+# Release workflows and registry credentials remain separate.
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  publish:
-    uses: ./.github/workflows/docker-publish.yml
-    with:
-      images: >-
-        [{"target":"api-build","file":"Dockerfile.multi","image_name":"lc-dev-api"},
-         {"target":"node","file":"Dockerfile","image_name":"lc-dev"}]
-      tag_suffixes: |
-        ${{ github.sha }}
-        latest
-      build_branch: ${{ github.ref_name }}
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  contract:
+    name: Build-only publishing guard
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Validate nonpublishing contract
+        run: node --test tests/omni-dev-build-only-workflow.test.mjs
+
+  build_only:
+    needs: [contract]
+    name: Build-only ${{ matrix.image.name }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - name: omni-dev-api
+            file: Dockerfile.multi
+            target: api-build
+          - name: omni-dev
+            file: Dockerfile
+            target: node
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout immutable candidate
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Set up native Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Prepare synthetic build configuration
+        run: |
+          cp .env.example .env
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+      - name: Native compile without registry access
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.image.file }}
+          target: ${{ matrix.image.target }}
+          platforms: linux/${{ matrix.arch }}
+          push: false
+          load: true
+          tags: omni-dev-buildonly:${{ matrix.image.name }}-${{ matrix.arch }}
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_BRANCH=${{ github.ref_name }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+      - name: Verify local image architecture
+        env:
+          IMAGE_NAME: ${{ matrix.image.name }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          image="omni-dev-buildonly:${IMAGE_NAME}-${ARCH}"
+          test "$(docker image inspect "$image" --format '{{.Architecture}}')" = "$ARCH"
+          echo "Built native ${ARCH} image locally; no push attempted"
